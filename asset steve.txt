@@ -1,0 +1,12 @@
+"D:\Project OOP\organized_assets_en\images\steve\body4.png" thân trái
+D:\Project OOP\organized_assets_en\images\steve\body4_1.png thân phải
+"D:\Project OOP\organized_assets_en\images\steve_arm\arm4_1.png" tay phải (khi đi về bên phải)
+"D:\Project OOP\organized_assets_en\images\steve_arm\arm4.png" tay phải (khi đi về bên trái)
+"D:\Project OOP\organized_assets_en\images\steve_arm\arm4.png" tay trái (khi đi về bên phải)
+"D:\Project OOP\organized_assets_en\images\steve_arm\arm4_1.png" tay trái (khi đi về bên phải)
+"D:\Project OOP\organized_assets_en\images\steve_legs\leg.png" chân trái
+"D:\Project OOP\organized_assets_en\images\steve_legs\leg_1.png" chân phải
+"D:\Project OOP\organized_assets_en\images\steves_head\right.png" đầu (nhỉn về bên phải)
+"D:\Project OOP\organized_assets_en\images\steves_head\right_1.png" đầu (nhìn về bên trái)
+"D:\Project OOP\organized_assets_en\images\steve_boots\leg_1.png" foot (đi về bên trái)
+"D:\Project OOP\organized_assets_en\images\steve_boots\leg_1.png" foot (đi về bên phải)

@@ -1,7 +1,11 @@
 # Asset MVP Plan (Batch 1)
 
-Nguon asset goc:
-`C:\Users\htran\Downloads\assets_renamed_2\assets_renamed`
+Nguon asset goc (chinh thuc):
+`D:\Project OOP\organized_assets_en`
+
+Luu y quan trong:
+- Tu gio tro di chi su dung asset trong `organized_assets_en`.
+- Khong su dung lai bat ky folder asset cu nao ngoai workspace.
 
 Muc tieu batch 1: du tai nguyen de chay vertical slice (world + player + 1 mob + UI toi thieu).
 
