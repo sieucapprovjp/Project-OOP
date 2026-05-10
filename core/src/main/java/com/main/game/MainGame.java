@@ -10,6 +10,7 @@ import com.main.game.screens.BaseScreen;
 import com.main.game.screens.GameScreen;
 import com.main.game.screens.StateScreen;
 import com.main.game.utils.TextureManager;
+import com.main.game.world.BlockPalette;
 
 /**
  * Entry point của game — thay thế file MainGame.java hiện tại.
@@ -75,6 +76,7 @@ public class MainGame extends Game {
             current.dispose();
         }
         // Dispose shared resources
+        BlockPalette.dispose();
         TextureManager.getInstance().dispose();
         assetManager.dispose();
         batch.dispose();

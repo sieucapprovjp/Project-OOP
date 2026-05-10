@@ -26,7 +26,7 @@
 - [x] Tao `PhysicsEngine` co ban (gravity + velocity + ground detection don gian).
 - [x] Tao `Constants` class tap trung cau hinh game.
 - [x] Tao `BlockPalette` load texture cho 8 loai block (grass/stone/bedrock/sand/wood/leaves/planks/dirt).
-- [ ] Tich hop `BlockPalette.dispose()` vao `MainGame.dispose()` — hien dang leak texture.
+- [x] Tich hop `BlockPalette.dispose()` vao `MainGame.dispose()` — hien dang leak texture.
 - [ ] Setup template cho PR/Issue va quy trinh review (main chi merge qua PR).
 - [ ] **MERGE PLAN**: Xac dinh thu tu merge cac branch de giam conflict.
 
