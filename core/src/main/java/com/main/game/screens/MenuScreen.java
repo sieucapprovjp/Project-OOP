@@ -1,21 +1,35 @@
 package com.main.game.screens;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.scenes.scene2d.InputEvent;
-import com.badlogic.gdx.scenes.scene2d.Stage;
-import com.badlogic.gdx.scenes.scene2d.ui.Label;
-import com.badlogic.gdx.scenes.scene2d.ui.Table;
-import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
-import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
-import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.math.MathUtils;
 import com.main.game.MainGame;
 import com.main.game.navigation.ScreenId;
-import com.main.game.ui.UISkin;
 
+/**
+ * Màn hình Menu chính — sử dụng ảnh gốc từ Paper Minecraft.
+ *
+ * Layout:
+ *  - Nền: 1 ảnh bất kỳ từ thư mục stage
+ *  - Layer 2: splash-worldoptions.png
+ *  - 4 nút bấm texture: New Game, Load Worlds, Game Help, Settings
+ *  - Hiệu ứng hover: phóng to 105% + sáng lên (giống Scratch gốc)
+ */
 public class MenuScreen extends BaseScreen {
 
-    private Stage stage;
+    // Textures
+    private Texture stageTexture;
+    private Texture layer2Texture;
+    private Texture[] btnTextures;  // 0=NewGame, 1=LoadWorlds, 2=Help, 3=Settings
+
+    // Hover animation state per button (current scale, 1.0 = normal)
+    private float[] btnScales;
+
+    // Button layout constants (will be computed in draw based on screen size)
+    private static final int BTN_COUNT = 4;
 
     public MenuScreen(MainGame game) {
         super(game);
@@ -28,68 +42,163 @@ public class MenuScreen extends BaseScreen {
 
     @Override
     public void show() {
-        stage = new Stage(new ScreenViewport(), batch);
-        Gdx.input.setInputProcessor(stage);
+        // Background stage layer (pick any single file from stage folder)
+        FileHandle[] stageFiles = Gdx.files.internal("stage").list();
+        if (stageFiles.length > 0) {
+            int index = MathUtils.random(stageFiles.length - 1);
+            stageTexture = new Texture(stageFiles[index]);
+        } else {
+            stageTexture = new Texture(Gdx.files.internal("stage/sky.png"));
+        }
 
-        Table table = new Table();
-        table.setFillParent(true);
-        stage.addActor(table);
+        // Layer 2 sprite
+        layer2Texture = new Texture(Gdx.files.internal("images/stage_sprite/splash-worldoptions.png"));
 
-        Label titleLabel = new Label("MINECRAFT 2D", UISkin.getSkin());
-        titleLabel.setFontScale(3f);
+        // Buttons
+        btnTextures = new Texture[BTN_COUNT];
+        btnTextures[0] = new Texture(Gdx.files.internal("images/stage_sprite/spl1b-new_game.png"));
+        btnTextures[1] = new Texture(Gdx.files.internal("images/stage_sprite/spl1b-load_game.png"));
+        btnTextures[2] = new Texture(Gdx.files.internal("images/stage_sprite/spl1b-help.png"));
+        btnTextures[3] = new Texture(Gdx.files.internal("images/stage_sprite/spl1b-game_settings.png"));
 
-        TextButton playBtn = new TextButton("Singleplayer", UISkin.getSkin());
-        TextButton multiBtn = new TextButton("Multiplayer", UISkin.getSkin());
-        TextButton optionsBtn = new TextButton("Options", UISkin.getSkin());
-        TextButton quitBtn = new TextButton("Quit Game", UISkin.getSkin());
-
-        playBtn.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                game.getScreenRouter().request(ScreenId.MODE_SELECT);
-            }
-        });
-
-        quitBtn.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                Gdx.app.exit();
-            }
-        });
-
-        table.add(titleLabel).padBottom(80).row();
-        table.add(playBtn).width(400).height(60).padBottom(20).row();
-        table.add(multiBtn).width(400).height(60).padBottom(20).row();
-        table.add(optionsBtn).width(400).height(60).padBottom(20).row();
-        table.add(quitBtn).width(400).height(60).padBottom(20).row();
+        btnScales = new float[BTN_COUNT];
+        for (int i = 0; i < BTN_COUNT; i++) btnScales[i] = 1.0f;
     }
 
     @Override
     public void update(float delta) {
-        if (stage != null) stage.act(delta);
+        float sw = Gdx.graphics.getWidth();
+        float sh = Gdx.graphics.getHeight();
+        float mx = Gdx.input.getX();
+        float my = sh - Gdx.input.getY(); // flip Y for libGDX coords
+
+        // Compute button positions (same logic as draw)
+        float uiScale = Math.min(sw / 482f, sh / 344f);
+        float btnW = 262f * uiScale;
+        float btnH = 36f * uiScale;
+        float btnX = (sw - btnW) / 2f;
+        float btnStartY = sh * 0.45f;
+        float btnGap = btnH + 10f * uiScale;
+
+        boolean clicked = Gdx.input.justTouched();
+
+        for (int i = 0; i < BTN_COUNT; i++) {
+            float by = btnStartY - i * btnGap;
+
+            // Check hover
+            boolean hover = mx >= btnX && mx <= btnX + btnW && my >= by && my <= by + btnH;
+
+            // Smooth scale animation (like Scratch: (target - current) * 0.2)
+            float target = hover ? 1.05f : 1.0f;
+            btnScales[i] += (target - btnScales[i]) * 0.2f;
+
+            // Handle click
+            if (hover && clicked) {
+                switch (i) {
+                    case 0: // New Game
+                        game.getScreenRouter().request(ScreenId.MODE_SELECT);
+                        break;
+                    case 1: // Load Worlds
+                        game.getScreenRouter().request(ScreenId.GAME);
+                        break;
+                    case 2: // Help (placeholder)
+                        break;
+                    case 3: // Settings (placeholder)
+                        break;
+                }
+            }
+        }
     }
 
     @Override
     public void draw() {
-        Gdx.gl.glClearColor(0.2f, 0.15f, 0.1f, 1);
+        Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-        if (stage != null) stage.draw();
+
+        float sw = Gdx.graphics.getWidth();
+        float sh = Gdx.graphics.getHeight();
+
+        // Use a separate ortho projection for UI
+        batch.getProjectionMatrix().setToOrtho2D(0, 0, sw, sh);
+        batch.begin();
+
+        // ── Draw stage background (center-crop) ──
+        float texW = stageTexture.getWidth();
+        float texH = stageTexture.getHeight();
+        float bgScale = Math.max(sw / texW, sh / texH);
+        float drawW = texW * bgScale;
+        float drawH = texH * bgScale;
+        float drawX = (sw - drawW) / 2f;
+        float drawY = (sh - drawH) / 2f;
+        batch.draw(stageTexture, drawX, drawY, drawW, drawH);
+
+        // ── Scale factor based on screen vs original splash size (482x344) ──
+        float uiScale = Math.min(sw / 482f, sh / 344f);
+
+        // ── Draw layer 2 sprite ──
+        float layer2W = layer2Texture.getWidth() * uiScale;
+        float layer2H = layer2Texture.getHeight() * uiScale;
+        float layer2X = (sw - layer2W) / 2f;
+        float layer2Y = sh - layer2H - 20f * uiScale;
+        batch.draw(layer2Texture, layer2X, layer2Y, layer2W, layer2H);
+
+        // ── Draw 4 buttons ──
+        float btnBaseW = 262f * uiScale;
+        float btnBaseH = 36f * uiScale;
+        float btnX = (sw - btnBaseW) / 2f;
+        float btnStartY = sh * 0.45f;
+        float btnGap = btnBaseH + 10f * uiScale;
+
+        for (int i = 0; i < BTN_COUNT; i++) {
+            float by = btnStartY - i * btnGap;
+            float scale = btnScales[i];
+
+            float btnW = btnBaseW * scale;
+            float btnH = btnBaseH * scale;
+            // Center the scaled button on the original position
+            float bx = btnX + (btnBaseW - btnW) / 2f;
+            float scaledY = by + (btnBaseH - btnH) / 2f;
+
+            // Brightness effect: when scale > 1, make slightly brighter
+            float bright = (scale - 1f) * 10f; // 0 to ~0.5
+            batch.setColor(1f + bright, 1f + bright, 1f + bright, 1f);
+            batch.draw(btnTextures[i], bx, scaledY, btnW, btnH);
+        }
+
+        batch.setColor(Color.WHITE);
+        batch.end();
     }
 
     @Override
     public void resize(int width, int height) {
-        super.resize(width, height);
-        if (stage != null) stage.getViewport().update(width, height, true);
+        // No viewport needed — we use raw screen coords
     }
 
     @Override
     public void hide() {
-        Gdx.input.setInputProcessor(null);
+        disposeTextures();
     }
 
     @Override
     public void dispose() {
         super.dispose();
-        if (stage != null) stage.dispose();
+        disposeTextures();
+    }
+
+    private void disposeTextures() {
+        if (stageTexture != null) {
+            stageTexture.dispose();
+            stageTexture = null;
+        }
+        if (layer2Texture != null) {
+            layer2Texture.dispose();
+            layer2Texture = null;
+        }
+        if (btnTextures != null) {
+            for (Texture t : btnTextures) {
+                if (t != null) t.dispose();
+            }
+            btnTextures = null;
+        }
     }
 }

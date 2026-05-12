@@ -54,6 +54,8 @@ public class MainGame extends Game {
                 return new ModeSelectScreen(this);
             case GAME:
                 return new GameScreen(this);
+            case PAUSE:
+                return new StateScreen(this, id);
             case GAME_OVER:
                 return new StateScreen(this, id);
             default:

@@ -16,9 +16,13 @@ public class TextureManager {
     private TextureManager() {
         // Tự động load atlas từ đường dẫn trong Constants của bạn
         try {
-            atlas = new TextureAtlas(Gdx.files.internal(Constants.TEXTURE_ATLAS_PATH));
+            FileHandle atlasFile = Gdx.files.internal(Constants.TEXTURE_ATLAS_PATH);
+            if (atlasFile.exists()) {
+                atlas = new TextureAtlas(atlasFile);
+            } else {
+                atlas = null;
+            }
         } catch (Exception e) {
-            System.err.println("Chưa tìm thấy file atlas tại: " + Constants.TEXTURE_ATLAS_PATH);
             atlas = null;
         }
     }
@@ -46,10 +50,11 @@ public class TextureManager {
         nameMap.put("oak_log", "wood");
         nameMap.put("oak_leaves", "leaves");
         nameMap.put("oak_planks", "planks");
+        nameMap.put("dirt", "dirt");
 
         String base = nameMap.getOrDefault(name, name);
 
-        String[] searchDirs = new String[] {"", "atlas/", "mvp/tiles/", "mvp/player/", "organized_assets_en/images/tiles/"};
+        String[] searchDirs = new String[] {"", "atlas/", "mvp/tiles/", "mvp/player/", "mvp/ui/"};
         String[] exts = new String[] {".png", ".jpg", ".jpeg"};
 
         for (String dir : searchDirs) {

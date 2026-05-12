@@ -322,4 +322,14 @@ public class Player extends Entity {
     public int         getHealth()    { return health;     }
     public int         getMaxHealth() { return maxHealth;  }
     public boolean     isHurt()       { return hurtTimer > 0; }
+
+    public void respawn(float x, float y) {
+        this.position.set(x, y);
+        this.velocity.set(0, 0);
+        this.health = maxHealth;
+        this.isAlive = true;
+        this.state = EntityState.IDLE;
+        this.hurtTimer = 0;
+        this.stateTime = 0;
+    }
 }
