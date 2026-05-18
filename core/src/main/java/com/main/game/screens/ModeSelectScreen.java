@@ -1,6 +1,7 @@
 package com.main.game.screens;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
@@ -34,6 +35,12 @@ public class ModeSelectScreen extends BaseScreen {
 
     private final int[] menuChoices = {0, 0, 0, 0};
 
+    private static final float SCRATCH_W = 480f;
+    private static final float SCRATCH_H = 360f;
+    private static final float DONE_CENTER_X = -90f;
+    private static final float SETTINGS_CENTER_X = 90f;
+    private static final float BUTTON_CENTER_Y = -135f;
+
     // Cached button rects (computed once per frame in draw)
     private float doneX, doneY, doneW, doneH;
     private float backX, backY, backW, backH;
@@ -54,14 +61,19 @@ public class ModeSelectScreen extends BaseScreen {
 
     @Override
     public void show() {
-        int bgIndex = MathUtils.random(2, 28);
-        bgTexture = new Texture(Gdx.files.internal("images/stage_sprite/empty" + bgIndex + ".png"));
+        FileHandle[] stageFiles = Gdx.files.internal("stage").list();
+        if (stageFiles.length > 0) {
+            int bgIndex = MathUtils.random(stageFiles.length - 1);
+            bgTexture = new Texture(stageFiles[bgIndex]);
+        } else {
+            bgTexture = new Texture(Gdx.files.internal("images/stage_sprite/empty2.png"));
+        }
         logoTexture = new Texture(Gdx.files.internal("images/stage_sprite/splash-worldoptions.png"));
         panelTexture = new Texture(Gdx.files.internal("images/menu/world-options2.png"));
         labelsTexture = new Texture(Gdx.files.internal("images/menu2/world-options-text.png"));
         doneTexture = new Texture(Gdx.files.internal("images/menu/done.png"));
         backTexture = new Texture(Gdx.files.internal("images/menu/back.png"));
-        settingsTexture = new Texture(Gdx.files.internal("images/unnamed/settings.png"));
+        settingsTexture = new Texture(Gdx.files.internal("images/stage_sprite/spl1b-game_settings.png"));
 
         GameState gameState = game.getGameState();
         menuChoices[0] = gameState.hardcore ? 3 : (gameState.creative ? 1 : 0);
@@ -127,10 +139,8 @@ public class ModeSelectScreen extends BaseScreen {
         // Logo (small title at top)
         batch.draw(logoTexture, logoX, logoY, logoW, logoH);
 
-        // Panel (world-options2) — centered below logo
+        // Panel and labels use the original Scratch center coordinate system.
         batch.draw(panelTexture, panelX, panelY, panelW, panelH);
-
-        // Labels overlay (world-options-text) — on top of panel
         batch.draw(labelsTexture, lblX, lblY, lblW, lblH);
 
         // Done button
@@ -159,8 +169,8 @@ public class ModeSelectScreen extends BaseScreen {
     private void handleOptionClick(float mx, float my) {
         float sw = Gdx.graphics.getWidth();
         float sh = Gdx.graphics.getHeight();
-        float scratchX = (mx / sw) * 480f - 240f;
-        float scratchY = (my / sh) * 360f - 180f;
+        float scratchX = (mx - sw / 2f) / uiScale;
+        float scratchY = (my - sh / 2f) / uiScale;
 
         int optID = Math.round((15f - scratchY) / 34f) + 1;
         int choiceID = Math.round((scratchX + 58f) / 72f);
@@ -197,40 +207,49 @@ public class ModeSelectScreen extends BaseScreen {
     private void updateLayout() {
         float sw = Gdx.graphics.getWidth();
         float sh = Gdx.graphics.getHeight();
-        uiScale = Math.min(sw / 482f, sh / 344f);
+        uiScale = Math.min(sw / SCRATCH_W, sh / SCRATCH_H);
 
-        logoW = logoTexture.getWidth() * uiScale;
-        logoH = logoTexture.getHeight() * uiScale;
+        float logoScale = uiScale * 0.8f;
+        logoW = logoTexture.getWidth() * logoScale;
+        logoH = logoTexture.getHeight() * logoScale;
         logoX = (sw - logoW) / 2f;
-        logoY = sh - logoH - 10f * uiScale;
+        logoY = sh - logoH - 8f * uiScale;
 
         panelW = panelTexture.getWidth() * uiScale;
         panelH = panelTexture.getHeight() * uiScale;
-        panelX = (sw - panelW) / 2f;
-        panelY = logoY - panelH - 10f * uiScale;
+        panelX = scratchXToScreen(-panelTexture.getWidth() / 2f);
+        panelY = scratchYToScreen(-panelTexture.getHeight() / 2f);
 
-        lblW = labelsTexture.getWidth() * uiScale * 2f;
-        lblH = labelsTexture.getHeight() * uiScale * 2f;
-        lblX = panelX + (panelW - lblW) / 2f;
-        lblY = panelY + (panelH - lblH) / 2f;
+        lblW = labelsTexture.getWidth() * uiScale;
+        lblH = labelsTexture.getHeight() * uiScale;
+        lblX = scratchXToScreen(-labelsTexture.getWidth() / 2f);
+        lblY = scratchYToScreen(-labelsTexture.getHeight() / 2f);
 
         float baseBtnW = doneTexture.getWidth() * uiScale;
         float baseBtnH = doneTexture.getHeight() * uiScale;
 
         doneW = baseBtnW;
         doneH = baseBtnH;
-        doneX = sw / 2f - baseBtnW - 10f * uiScale;
-        doneY = panelY - baseBtnH - 15f * uiScale;
+        doneX = scratchXToScreen(DONE_CENTER_X - doneTexture.getWidth() / 2f);
+        doneY = scratchYToScreen(BUTTON_CENTER_Y - doneTexture.getHeight() / 2f);
 
         settingsW = baseBtnW;
         settingsH = baseBtnH;
-        settingsX = sw / 2f + 10f * uiScale;
+        settingsX = scratchXToScreen(SETTINGS_CENTER_X - doneTexture.getWidth() / 2f);
         settingsY = doneY;
 
         backW = backTexture.getWidth() * uiScale;
         backH = backTexture.getHeight() * uiScale;
         backX = (sw - backW) / 2f;
-        backY = doneY - backH - 10f * uiScale;
+        backY = scratchYToScreen(-170f - backTexture.getHeight() / 2f);
+    }
+
+    private float scratchXToScreen(float scratchX) {
+        return (Gdx.graphics.getWidth() / 2f) + scratchX * uiScale;
+    }
+
+    private float scratchYToScreen(float scratchY) {
+        return (Gdx.graphics.getHeight() / 2f) + scratchY * uiScale;
     }
 
     private void applyMenuChoices() {
