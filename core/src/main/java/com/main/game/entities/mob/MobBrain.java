@@ -1,4 +1,6 @@
-package com.main.game.entities;
+package com.main.game.entities.mob;
+
+import com.main.game.entities.player.Player;
 
 final class MobBrain {
 

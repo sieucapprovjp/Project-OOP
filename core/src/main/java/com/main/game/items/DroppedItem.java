@@ -5,7 +5,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.main.game.blocks.AbstractBlock;
-import com.main.game.entities.Player;
+import com.main.game.entities.player.Player;
 import com.main.game.inventory.Inventory;
 import com.main.game.world.World;
 

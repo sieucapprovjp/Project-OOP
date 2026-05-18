@@ -1,5 +1,6 @@
-package com.main.game.entities;
+package com.main.game.entities.mob;
 
+import com.main.game.entities.Entity;
 import com.main.game.world.World;
 
 final class MobSightHelper {

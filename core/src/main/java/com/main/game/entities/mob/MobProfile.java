@@ -1,4 +1,4 @@
-package com.main.game.entities;
+package com.main.game.entities.mob;
 
 final class MobProfile {
 

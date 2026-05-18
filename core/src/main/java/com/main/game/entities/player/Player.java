@@ -1,8 +1,10 @@
-package com.main.game.entities;
+package com.main.game.entities.player;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.main.game.entities.Entity;
+import com.main.game.entities.EntityState;
 import com.main.game.physics.PhysicsEngine;
 import com.main.game.world.World;
 

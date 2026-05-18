@@ -1,8 +1,11 @@
-package com.main.game.entities;
+package com.main.game.entities.mob;
 
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.main.game.entities.Entity;
+import com.main.game.entities.EntityState;
+import com.main.game.entities.player.Player;
 import com.main.game.physics.PhysicsEngine;
 import com.main.game.world.World;
 
@@ -146,8 +149,8 @@ public class Mob extends Entity {
     }
 
     float distanceTo(Entity other) {
-        float dx = (other.getX() + other.width / 2) - (position.x + width / 2);
-        float dy = (other.getY() + other.height / 2) - (position.y + height / 2);
+        float dx = (other.getX() + other.getWidth() / 2f) - (position.x + width / 2f);
+        float dy = (other.getY() + other.getHeight() / 2f) - (position.y + height / 2f);
         return (float) Math.sqrt(dx * dx + dy * dy);
     }
 

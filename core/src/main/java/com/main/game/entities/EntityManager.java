@@ -1,6 +1,8 @@
 package com.main.game.entities;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.main.game.entities.mob.Mob;
+import com.main.game.entities.player.Player;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;

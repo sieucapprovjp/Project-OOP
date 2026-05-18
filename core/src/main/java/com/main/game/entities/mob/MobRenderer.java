@@ -1,4 +1,4 @@
-package com.main.game.entities;
+package com.main.game.entities.mob;
 
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;

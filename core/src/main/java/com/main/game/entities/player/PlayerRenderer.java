@@ -1,10 +1,11 @@
-package com.main.game.entities;
+package com.main.game.entities.player;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.main.game.entities.EntityState;
 
 class PlayerRenderer {
 
@@ -80,9 +81,9 @@ class PlayerRenderer {
         TextureRegion bootFront = regBootR;
         TextureRegion bootBack = regBootL;
 
-        float px = player.position.x;
-        float py = player.position.y;
-        float cx = px + player.width / 2f;
+        float px = player.getX();
+        float py = player.getY();
+        float cx = px + player.getWidth() / 2f;
 
         float headW = 0.5f;
         float headH = 0.5f;
@@ -104,8 +105,8 @@ class PlayerRenderer {
         float headY = bodyY + bodyH;
         float armY = bodyY + bodyH - 0.1f;
 
-        float scaleX = player.facingRight ? 1f : -1f;
-        float angleSign = player.facingRight ? 1f : -1f;
+        float scaleX = player.isFacingRight() ? 1f : -1f;
+        float angleSign = player.isFacingRight() ? 1f : -1f;
         float armFrontRot = armFrontAngle * angleSign;
         float armBackRot = armBackAngle * angleSign;
         float legFrontRot = legFrontAngle * angleSign;

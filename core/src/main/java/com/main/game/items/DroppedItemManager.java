@@ -2,7 +2,7 @@ package com.main.game.items;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.Array;
-import com.main.game.entities.Player;
+import com.main.game.entities.player.Player;
 import com.main.game.inventory.Inventory;
 import com.main.game.world.World;
 
