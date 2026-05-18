@@ -12,4 +12,8 @@ public class StoneBlocks {
         public BedrockBlock(int x, int y) { super(x, y, "bedrock", true, false, -1f); }
         @Override public TextureRegion getTexture() { return TextureManager.getInstance().getTexture("bedrock"); }
     }
+    public static class SandstoneBlock extends AbstractBlock {
+        public SandstoneBlock(int x, int y) { super(x, y, "sandstone", true, true, 1.2f); }
+        @Override public TextureRegion getTexture() { return com.main.game.world.BlockPalette.getSandstone(); }
+    }
 }

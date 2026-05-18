@@ -13,7 +13,6 @@ import com.badlogic.gdx.math.Vector2;
 import com.main.game.GameState;
 import com.main.game.MainGame;
 import com.main.game.entities.EntityManager;
-import com.main.game.entities.mob.Mob;
 import com.main.game.entities.player.Player;
 import com.main.game.interaction.BlockBreakOverlay;
 import com.main.game.interaction.BlockBreaker;
@@ -29,6 +28,7 @@ import com.main.game.utils.Constants;
 import com.main.game.world.BlockPalette;
 import com.main.game.world.DemoBlockViewer;
 import com.main.game.world.World;
+import com.main.game.worldgen.BiomeMobSpawner;
 
 /**
  * Screen chính của game — nơi mọi module hội tụ.
@@ -43,6 +43,7 @@ import com.main.game.world.World;
 public class GameScreen extends BaseScreen {
 
     private static final float CAMERA_ZOOM = 0.65f;
+    private static final long DEFAULT_WORLD_SEED = 1337L;
 
     private World world; // TODO(KIEN-WORLD): quản lý world/chunk/camera follow
     private PhysicsEngine physics; // TODO(LHUNG-PHYSICS): collision + resolve
@@ -85,7 +86,7 @@ public class GameScreen extends BaseScreen {
     public void show() {
         world = new World();
         // TODO(KIEN-WORLD): seed nên lấy từ save/game config thay vì hardcode.
-        world.generate(1337L);
+        world.generate(DEFAULT_WORLD_SEED);
 
         physics = new PhysicsEngine();
 
@@ -108,14 +109,7 @@ public class GameScreen extends BaseScreen {
         blockBreaker.setBlockBreakListener((block, worldRef) ->
             droppedItemManager.spawn(BlockDropFactory.createDrop(block, worldRef), worldRef));
 
-        // ── Spawn mob mẫu để test ────────────────────── DUOC-ENTITY ──
-        entityManager.addMob(new Mob(spawnX + 10f, spawnY + 5f, Mob.MobType.ZOMBIE, player, physics, world));
-        entityManager.addMob(new Mob(spawnX + 14f, spawnY + 5f, Mob.MobType.HUSK, player, physics, world));
-        entityManager.addMob(new Mob(spawnX + 20f, spawnY + 5f, Mob.MobType.SKELETON, player, physics, world));
-        entityManager.addMob(new Mob(spawnX - 8f, spawnY + 5f, Mob.MobType.COW, player, physics, world));
-        entityManager.addMob(new Mob(spawnX - 12f, spawnY + 5f, Mob.MobType.PIG, player, physics, world));
-        entityManager.addMob(new Mob(spawnX - 16f, spawnY + 5f, Mob.MobType.SHEEP, player, physics, world));
-        entityManager.addMob(new Mob(spawnX - 20f, spawnY + 5f, Mob.MobType.CHICKEN, player, physics, world));
+        BiomeMobSpawner.spawnInitialMobs(world, player, physics, entityManager, DEFAULT_WORLD_SEED);
 
         paused = false;
         dead = false;

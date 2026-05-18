@@ -1,8 +1,13 @@
 package com.main.game.world;
 
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.Texture;
 import com.main.game.blocks.AbstractBlock;
 import com.main.game.utils.TextureManager;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import java.util.ArrayList;
+import java.util.List;
 
 // IMPORT CỤ THỂ TỪNG CLASS CHA ĐỂ MÁY KHÔNG NHẦM LÀ PACKAGE
 import com.main.game.blocks.types.UtilityBlocks;
@@ -27,6 +32,11 @@ public final class BlockPalette {
     private static TextureRegion wood;
     private static TextureRegion leaves;
     private static TextureRegion planks;
+    private static TextureRegion snow;
+    private static TextureRegion ice;
+    private static TextureRegion sandstone;
+    private static TextureRegion cactus;
+    private static final List<Texture> generatedTextures = new ArrayList<>();
     private static boolean initialized = false;
 
     private BlockPalette() {}
@@ -43,6 +53,10 @@ public final class BlockPalette {
         wood    = tm.getTexture("oak_log");
         leaves  = tm.getTexture("oak_leaves");
         planks  = tm.getTexture("oak_planks");
+        snow = textureOrGenerated(tm, "snow", Color.WHITE);
+        ice = textureOrGenerated(tm, "ice", new Color(0.55f, 0.85f, 1f, 1f));
+        sandstone = textureOrGenerated(tm, "sandstone", new Color(0.78f, 0.67f, 0.38f, 1f));
+        cactus = textureOrGenerated(tm, "cactus", new Color(0.1f, 0.55f, 0.18f, 1f));
         initialized = true;
     }
 
@@ -55,6 +69,10 @@ public final class BlockPalette {
     public static TextureRegion getWood()    { ensureInitialized(); return wood;    }
     public static TextureRegion getLeaves()  { ensureInitialized(); return leaves;  }
     public static TextureRegion getPlanks()  { ensureInitialized(); return planks;  }
+    public static TextureRegion getSnow()    { ensureInitialized(); return snow;    }
+    public static TextureRegion getIce()     { ensureInitialized(); return ice;     }
+    public static TextureRegion getSandstone() { ensureInitialized(); return sandstone; }
+    public static TextureRegion getCactus()  { ensureInitialized(); return cactus;  }
 
     // ─── Compat: giữ tên field cũ dưới dạng getter ───────────────
     // Để code cũ dùng BlockPalette.GRASS vẫn compile, ta giữ public static fields
@@ -74,6 +92,10 @@ public final class BlockPalette {
             case 6:  return new WoodBlocks.OakLeavesBlock(x, y);
             case 7:  return new StoneBlocks.BedrockBlock(x, y);
             case 9:  return new NatureBlocks.SandBlock(x, y);
+            case 10: return new NatureBlocks.SnowBlock(x, y);
+            case 11: return new NatureBlocks.IceBlock(x, y);
+            case 12: return new StoneBlocks.SandstoneBlock(x, y);
+            case 13: return new NatureBlocks.CactusBlock(x, y);
 
             default: return new UtilityBlocks.AirBlock(x, y);
         }
@@ -82,5 +104,29 @@ public final class BlockPalette {
     public static void dispose() {
         initialized = false;
         grass = dirt = stone = bedrock = sand = wood = leaves = planks = null;
+        snow = ice = sandstone = cactus = null;
+        for (Texture texture : generatedTextures) {
+            texture.dispose();
+        }
+        generatedTextures.clear();
+    }
+
+    private static TextureRegion textureOrGenerated(TextureManager tm, String name, Color fallbackColor) {
+        TextureRegion texture = tm.getTexture(name);
+        if (texture != null) {
+            return texture;
+        }
+        Pixmap pixmap = new Pixmap(16, 16, Pixmap.Format.RGBA8888);
+        pixmap.setColor(fallbackColor);
+        pixmap.fill();
+        pixmap.setColor(fallbackColor.cpy().mul(0.82f));
+        for (int i = 0; i < 16; i += 4) {
+            pixmap.drawLine(0, i, 15, i);
+        }
+        Texture generated = new Texture(pixmap);
+        generated.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+        pixmap.dispose();
+        generatedTextures.add(generated);
+        return new TextureRegion(generated);
     }
 }

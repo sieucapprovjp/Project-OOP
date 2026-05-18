@@ -9,9 +9,13 @@
 
 ## 2. Thế giới (World)
 - Sinh terrain ngẫu nhiên 400×128 tiles từ seed
-- 5 lớp địa chất: bedrock → stone → dirt → grass/sand
-- Cây tự động: thân gỗ 3-4 block + tán lá
-- 8 loại block: grass, stone, bedrock, sand, wood, leaves, planks, dirt
+- Tạo thế giới qua module `worldgen`, `World.generate(seed)` chỉ ủy quyền cho generator
+- 3 biome MVP: forest, desert, snow
+- 5 lớp địa chất: bedrock → stone/sandstone → dirt/sand → grass/snow/sand
+- Decoration tự động: cây, cactus, ice patch
+- Structure MVP: village/house đơn giản đặt trên mặt đất hợp lệ
+- Block cơ bản: grass, stone, bedrock, sand, wood, leaves, planks, dirt
+- Block biome mới: snow, ice, sandstone, cactus
 - Mỗi block có thuộc tính: solid, breakable, hardness
 - Frustum culling — chỉ render block trong tầm nhìn camera
 
@@ -24,13 +28,15 @@
 - Hệ thống máu 20 HP, nhận damage, hurt blink
 
 ## 4. Mob (AI)
-- 2 loại: Zombie (cận chiến), Skeleton (tầm xa)
+- Hostile: Zombie, Husk, Skeleton, Stray
+- Passive: Cow, Pig, Sheep, Chicken
 - AI 3 trạng thái:
   - PATROL — đi tuần trong phạm vi
   - CHASE — phát hiện player → đuổi theo
   - ATTACK — trong tầm đánh → gây damage
 - Aggro/de-aggro theo khoảng cách
 - Animation walk, idle, hurt
+- Initial spawn theo biome: forest ưu tiên passive, desert ưu tiên husk/skeleton, snow ưu tiên stray/sheep
 
 ## 5. Vật lý (Physics)
 - Trọng lực kéo entity xuống

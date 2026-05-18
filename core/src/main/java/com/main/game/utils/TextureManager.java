@@ -51,6 +51,10 @@ public class TextureManager {
         nameMap.put("oak_leaves", "leaves");
         nameMap.put("oak_planks", "planks");
         nameMap.put("dirt", "dirt");
+        nameMap.put("snow", "snow");
+        nameMap.put("ice", "ice");
+        nameMap.put("sandstone", "sandstone");
+        nameMap.put("cactus", "cactus");
 
         String base = nameMap.getOrDefault(name, name);
 

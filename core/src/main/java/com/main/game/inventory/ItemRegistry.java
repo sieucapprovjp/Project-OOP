@@ -38,6 +38,10 @@ public final class ItemRegistry {
         if ("wood".equals(itemId)) return "wood";
         if ("leaves".equals(itemId)) return "leaves";
         if ("planks".equals(itemId)) return "planks";
+        if ("snow".equals(itemId)) return "snow";
+        if ("ice".equals(itemId)) return "ice";
+        if ("sandstone".equals(itemId)) return "sandstone";
+        if ("cactus".equals(itemId)) return "cactus";
         return itemId;
     }
 
@@ -50,6 +54,10 @@ public final class ItemRegistry {
         if ("leaves".equals(itemId)) return BlockPalette.getLeaves();
         if ("planks".equals(itemId)) return BlockPalette.getPlanks();
         if ("bedrock".equals(itemId)) return BlockPalette.getBedrock();
+        if ("snow".equals(itemId)) return BlockPalette.getSnow();
+        if ("ice".equals(itemId)) return BlockPalette.getIce();
+        if ("sandstone".equals(itemId)) return BlockPalette.getSandstone();
+        if ("cactus".equals(itemId)) return BlockPalette.getCactus();
         return null;
     }
 }

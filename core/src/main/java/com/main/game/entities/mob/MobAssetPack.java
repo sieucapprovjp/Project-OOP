@@ -37,6 +37,15 @@ final class MobAssetPack {
                     "mobs/skeleton/mobs/skeleton4.png");
                 hurtAnim = single("mobs/skeleton/mobs/skeletonfacehurt.png");
                 break;
+            case STRAY:
+                idleAnim = single("mobs/skeleton/mobs/skeletonface.png");
+                walkAnim = sequenceWithFallback(0.12f,
+                    "mobs/skeleton/mobs/skeleton1.png",
+                    "mobs/skeleton/mobs/skeleton2.png",
+                    "mobs/skeleton/mobs/skeleton3.png",
+                    "mobs/skeleton/mobs/skeleton4.png");
+                hurtAnim = single("mobs/skeleton/mobs/skeletonfacehurt.png");
+                break;
             case PIG:
                 idleAnim = single("mobs/pig/mobs/piglook3.png");
                 walkAnim = sequenceWithFallback(0.11f,

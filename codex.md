@@ -54,6 +54,8 @@
   - Co fallback texture va dispose tap trung.
 - `core/src/main/java/com/main/game/world/DemoBlockViewer.java`
   - Tool debug de spawn/xem nhanh block trong world.
+- `core/src/main/java/com/main/game/worldgen/*.java`
+  - Module tao world moi: biome, surface rules, decoration, house structure, spawn safety, mob spawn theo biome.
 
 - `core/src/main/java/com/main/game/blocks/AbstractBlock.java`
   - Contract block co thuoc tinh vat ly: `solid`, `breakable`, `hardness`, `bounds`.
@@ -64,14 +66,53 @@
 
 - `core/src/main/java/com/main/game/entities/Entity.java`
   - Base entity: position, velocity, bounds, trang thai song/chet.
-- `core/src/main/java/com/main/game/entities/Player.java`
+- `core/src/main/java/com/main/game/entities/player/Player.java`
   - Input + state machine player + health/damage/respawn.
-- `core/src/main/java/com/main/game/entities/Mob.java`
-  - AI mob (patrol/chase/attack tuy branch).
+- `core/src/main/java/com/main/game/entities/player/PlayerRenderer.java`
+  - Render rig player theo body part, swing arm khi mining.
+- `core/src/main/java/com/main/game/entities/mob/Mob.java`
+  - Orchestration mob: state, health, physics, goi AI/render.
+- `core/src/main/java/com/main/game/entities/mob/MobBrain.java`
+  - AI mob (`PATROL`, `CHASE`, `ATTACK`).
+- `core/src/main/java/com/main/game/entities/mob/MobProfile.java`
+  - Thong so theo loai mob: hostile/passive, aggro, speed, damage, HP.
+- `core/src/main/java/com/main/game/entities/mob/MobRenderer.java`
+  - Chon animation frame va render mob.
+- `core/src/main/java/com/main/game/entities/mob/MobAssetPack.java`
+  - Load asset mob theo loai, co fallback neu thieu frame.
+- `core/src/main/java/com/main/game/entities/mob/MobMovementHelper.java`
+  - Helper nhay qua vat can don gian.
+- `core/src/main/java/com/main/game/entities/mob/MobSightHelper.java`
+  - Check line-of-sight de tranh tan cong xuyen block.
 - `core/src/main/java/com/main/game/entities/EntityManager.java`
   - Update/render/dispose tap trung cho player + danh sach mob.
 - `core/src/main/java/com/main/game/entities/EntityState.java`
   - Enum state cho entity (`IDLE`, `RUN`, `JUMP`, `FALL`, ...).
+
+- `core/src/main/java/com/main/game/interaction/BlockBreaker.java`
+  - Xu ly hover/break block, check block bi che, danh sach block khong the pha.
+- `core/src/main/java/com/main/game/interaction/BlockBreakOverlay.java`
+  - Render cursor va crack texture khi dang pha block.
+
+- `core/src/main/java/com/main/game/items/DroppedItemManager.java`
+  - Quan ly item entity roi tren map.
+- `core/src/main/java/com/main/game/items/DroppedItem.java`
+  - Vat ly item roi, pickup delay, hut ve player va ghi vao inventory.
+- `core/src/main/java/com/main/game/items/BlockDropFactory.java`
+  - Tao drop tu block bi pha.
+
+- `core/src/main/java/com/main/game/inventory/Inventory.java`
+  - Model inventory 36 slot pickup (hotbar + main inventory).
+- `core/src/main/java/com/main/game/inventory/InventoryController.java`
+  - Toggle inventory, selected hotbar slot.
+- `core/src/main/java/com/main/game/inventory/InventoryInteractionHandler.java`
+  - Click trai/phai de cam, dat, swap, stack, tach stack.
+- `core/src/main/java/com/main/game/inventory/InventoryRenderer.java`
+  - Render hotbar/inventory/item dang cam va stack number.
+- `core/src/main/java/com/main/game/inventory/InventoryLayout.java`
+  - Toa do slot dung chung cho render va hit-test.
+- `core/src/main/java/com/main/game/inventory/ItemRegistry.java`
+  - Lookup texture va stack limit item/block.
 
 - `core/src/main/java/com/main/game/physics/PhysicsEngine.java`
   - Gravity + collision/ground detection.
@@ -99,18 +140,88 @@
   - Co culling de giam block render ngoai khung nhin.
 - Player:
   - Input co ban: di trai/phai, jump.
-  - State co ban: `IDLE`, `RUN`, `JUMP`, `FALL` (mo rong them `HURT`, `DEAD` tuy nhanh).
+  - State co ban: `IDLE`, `RUN`, `JUMP`, `FALL`, `HURT`, `DEAD`.
+  - Render da tach sang `entities/player/PlayerRenderer.java`.
+  - Co mining arm animation khi dang pha block.
 - Physics:
   - Da co gravity + ground detection co ban.
-  - Chua hoan thien collision day du 4 phia.
+  - Da resolve collision theo truc X/Y cho entity va block solid.
 - Blocks/Assets:
   - Co `BlockPalette`, `TextureManager`, bo block type classes.
+  - Da cap nhat asset path sau khi xoa cac file `*_1.png`.
+  - HUD texture co fallback khi thieu frame rieng le.
+- Block breaking:
+  - Co cursor hover block va crack animation tu `assets/cursor`.
+  - Chi cho pha block visible, khong pha block bi block khac che.
+  - Co danh sach block khong the pha (`bedrock`).
+  - Khi pha xong, block spawn dropped item.
+- Dropped item:
+  - Item roi co physics co ban: gravity, bounce ngang, snap dat, friction.
+  - Item hut ve player sau pickup delay va co the ghi vao inventory.
+- Inventory/hotbar:
+  - Hotbar render item dung texture.
+  - Mo inventory bang `E`.
+  - Click trai/phai de cam, dat, swap, stack va tach stack.
+  - Stack number dung font asset trong `assets/fonts`.
+- Mob:
+  - Da co mob hostile: `ZOMBIE`, `HUSK`, `SKELETON`.
+  - Da co mob passive: `COW`, `PIG`, `SHEEP`, `CHICKEN`.
+  - Hostile aggro player trong ban kinh 8 block; passive khong tan cong.
+  - Co patrol/chase/attack, line-of-sight check, nhay qua vat can co ban.
+  - Da refactor mob thanh `Mob`, `MobBrain`, `MobProfile`, `MobRenderer`, `MobAssetPack`, helper movement/sight.
+- Worldgen MVP:
+  - `World.generate(seed)` da tach sang `WorldGenerator.generate(world, seed)`.
+  - Da co 3 biome: `FOREST`, `DESERT`, `SNOW`.
+  - Da co village/house structure don gian tren mat dat phang.
+  - Da co spawn safety helper va initial mob spawn theo biome.
+  - Da them block biome: `snow`, `ice`, `sandstone`, `cactus` voi generated texture fallback neu chua co asset.
+  - Da them mob biome `STRAY` dung profile rieng va fallback skeleton asset.
 
 ## Co che dang thieu/uu tien tiep
-- AABB collision day du (tren/duoi/trai/phai), resolve theo truc X/Y.
-- On dinh jump/ground detection cho Player.
-- Hoan thien mob AI (patrol/chase/attack) cho mob dau tien.
-- Chuan hoa asset atlas va naming convention.
+- Chay `./gradlew.bat lwjgl3:run` sau moi lan doi asset de bat runtime missing texture.
+- Them projectile that cho `SKELETON` thay vi damage truc tiep.
+- Them co che player danh mob va mob drop item/loot.
+- Nang cap mob spawn system thanh spawn theo thoi gian/chunk thay vi initial spawn luc vao game.
+- Xu ly dropped item overflow khi dong inventory ma inventory day.
+- Chuan hoa asset atlas va naming convention de tranh crash do doi/xoa file.
+
+## Tien do worldgen MVP 2026-05-18
+- Da tach logic tao the gioi khoi `World` sang package `worldgen`.
+- Da implement biome noise cho forest/desert/snow va luu biome theo cot trong `World`.
+- Da them decoration co ban: cay forest/snow, cactus desert, ice patch snow.
+- Da them village/house structure placer voi dieu kien ground tuong doi phang.
+- Da them `SpawnSafety` cho entity/structure spawn validation.
+- Da thay spawn mob test trong `GameScreen` bang `BiomeMobSpawner.spawnInitialMobs(...)`.
+- Da them block moi `snow`, `ice`, `sandstone`, `cactus` vao palette/registry.
+- Verify: `./gradlew.bat classes` pass.
+
+## Tien do cuoi ngay 2026-05-18
+- Menu/New Game:
+  - Man hinh New Game da dung background random tu `assets/stage`.
+  - Da can lai setting/done button.
+- Block breaking:
+  - Da co hover cursor, crack animation, mining arm animation.
+  - Da check visible block va chan pha block bi che.
+  - Da chan block khong the pha nhu `bedrock`.
+- Dropped item:
+  - Da co dropped item entity tu block bi pha.
+  - Da co physics + pickup/suction vao inventory.
+- Inventory:
+  - Da co hotbar, inventory panel, stack number font, click left/right de quan ly item.
+  - Da can lai slot layout theo texture `images/gui_invrow/inventory.png`.
+- Player:
+  - Da tach package `entities/player`.
+  - Da sua asset path sau khi xoa file `*_1.png`.
+- Mob:
+  - Da them nhieu loai mob passive/hostile.
+  - Hostile aggro trong 8 block, passive chi patrol.
+  - Da tach package `entities/mob` va chia nho file logic/render/profile/assets.
+- Asset/runtime:
+  - Da ra soat cac path asset trong Java.
+  - Da them fallback cho HUD texture thieu frame.
+- Verify:
+  - `./gradlew.bat classes` pass sau refactor package `entities`.
+  - Can chay tiep `./gradlew.bat lwjgl3:run` de verify runtime game sau khi asset thay doi.
 
 ## Quy tac lam viec voi Codex
 - Khong doi kien truc lon neu chua duoc yeu cau.

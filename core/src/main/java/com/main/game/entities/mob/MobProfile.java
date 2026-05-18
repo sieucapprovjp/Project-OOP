@@ -44,6 +44,9 @@ final class MobProfile {
             case SKELETON:
                 return new MobProfile(1.8f, 3.0f, HOSTILE_AGGRO_RADIUS, 18f,
                     6f, 2.0f, 5f, 3, 20, true);
+            case STRAY:
+                return new MobProfile(1.7f, 2.8f, HOSTILE_AGGRO_RADIUS, 18f,
+                    6f, 2.2f, 5f, 3, 22, true);
             case COW:
                 return passive(1.6f, 5f, 18);
             case PIG:

@@ -30,7 +30,7 @@ import com.main.game.world.World;
 public class Mob extends Entity {
 
     // ─── Kiểu mob ─────────────────────────────────────────────
-    public enum MobType { ZOMBIE, HUSK, SKELETON, COW, PIG, SHEEP, CHICKEN }
+    public enum MobType { ZOMBIE, HUSK, SKELETON, STRAY, COW, PIG, SHEEP, CHICKEN }
 
     private static final float MOB_W = 0.8f;
     private static final float MOB_H = 1.8f;

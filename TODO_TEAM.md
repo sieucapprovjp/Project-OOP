@@ -3,6 +3,35 @@
 > Cap nhat lan cuoi: 2026-05-02
 > Trang thai: CHUA MERGE — moi nguoi dang code tren branch rieng.
 
+> Cap nhat bo sung: 2026-05-18
+> Trang thai moi: Da co MVP worldgen/biome/structure/block/mob theo ke hoach 1 tuan.
+
+## Ke Hoach 1 Tuan - Da Implement MVP
+
+### Kien + Lam Hung - Worldgen, Biome, Structure, Spawn Safety
+- [x] Tach logic tao world khoi `World.generate(seed)` sang package `worldgen`.
+- [x] Them 3 biome MVP: `FOREST`, `DESERT`, `SNOW`.
+- [x] Them surface rules va decoration co ban: cay, cactus, ice patch.
+- [x] Them village/house structure placer don gian.
+- [x] Them `SpawnSafety` de tim vi tri spawn hop le cho entity.
+- [ ] Nang cap house template de dep hon va it bi lech tren dia hinh doc.
+
+### Viet Hung - Block Moi, Asset, Registry
+- [x] Them block biome: `snow`, `ice`, `sandstone`, `cactus`.
+- [x] Cap nhat `BlockPalette`, `ItemRegistry`, block type mapping.
+- [x] Them generated texture fallback khi chua co asset that.
+- [ ] Them asset that cho `snow`, `ice`, `sandstone`, `cactus`.
+
+### Duoc - Mob Biome
+- [x] Them `MobType.STRAY` cho snow biome.
+- [x] Them profile va asset fallback cho `STRAY`.
+- [x] Thay spawn mob test co dinh bang `BiomeMobSpawner` spawn theo biome.
+- [ ] Them mob variants khac neu co asset rieng.
+
+### Verify
+- [x] `./gradlew.bat classes` pass.
+- [ ] Chay `./gradlew.bat lwjgl3:run` va test thu cong biome/house/mob spawn.
+
 ## Branch Map
 
 | Thanh vien | Branch | Commit cuoi | Trang thai |
