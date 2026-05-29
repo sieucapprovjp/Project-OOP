@@ -35,13 +35,13 @@ import java.util.Map;
 import java.util.Random;
 
 /**
- * Quản lý toàn bộ map game (Đã nâng cấp lên hệ thống Chunk vô tận)
+ * Quản lý toàn bộ map game bằng chunk trong phạm vi WORLD_WIDTH/WORLD_HEIGHT.
  */
 public class World {
 
     private final long seed;
     private final Map<GridPoint2, Chunk> chunks;
-    private final Map<Integer, BiomeType> biomes; // Dùng Map để hỗ trợ tọa độ X vô tận
+    private final Map<Integer, BiomeType> biomes;
     public final int width;
     public final int height;
 
@@ -60,7 +60,7 @@ public class World {
     }
 
     public AbstractBlock getBlock(int x, int y) {
-        if (y < 0 || y >= height) return null; // Chỉ giới hạn trần và đáy, X vô tận
+        if (!isInBounds(x, y)) return null;
         GridPoint2 chunkPos = getChunkCoord(x, y);
         Chunk chunk = chunks.get(chunkPos);
         if (chunk == null) return null;
@@ -68,23 +68,24 @@ public class World {
     }
 
     public void setBlock(int x, int y, AbstractBlock block) {
-        if (y < 0 || y >= height) return;
+        if (!isInBounds(x, y)) return;
         GridPoint2 chunkPos = getChunkCoord(x, y);
         Chunk chunk = chunks.computeIfAbsent(chunkPos, k -> new Chunk(chunkPos.x, chunkPos.y));
         chunk.setBlock(Math.floorMod(x, Constants.CHUNK_SIZE), Math.floorMod(y, Constants.CHUNK_SIZE), block);
     }
 
     public void setBiome(int x, BiomeType biome) {
-        if (biome == null) return;
+        if (biome == null || x < 0 || x >= width) return;
         biomes.put(x, biome);
     }
 
     public BiomeType getBiome(int x) {
+        if (x < 0 || x >= width) return BiomeType.FOREST;
         return biomes.getOrDefault(x, BiomeType.FOREST);
     }
 
     public boolean isInBounds(int x, int y) {
-        return y >= 0 && y < height; // X vô tận, không kiểm tra width nữa
+        return x >= 0 && x < width && y >= 0 && y < height;
     }
 
     public boolean isSolid(int x, int y) {
@@ -92,14 +93,18 @@ public class World {
         return block != null && block.isSolid();
     }
 
-    /** Streaming Map: Load Chunk xung quanh Camera */
+    /** Load chunk trong phạm vi map hữu hạn xung quanh camera. */
     public void update(OrthographicCamera camera) {
         int camChunkX = Math.floorDiv((int) camera.position.x, Constants.CHUNK_SIZE);
         int camChunkY = Math.floorDiv((int) camera.position.y, Constants.CHUNK_SIZE);
         int loadRadius = 4;
+        int minChunkX = 0;
+        int maxChunkX = Math.floorDiv(width - 1, Constants.CHUNK_SIZE);
+        int minChunkY = 0;
+        int maxChunkY = Math.floorDiv(height - 1, Constants.CHUNK_SIZE);
 
-        for (int cx = camChunkX - loadRadius; cx <= camChunkX + loadRadius; cx++) {
-            for (int cy = camChunkY - loadRadius; cy <= camChunkY + loadRadius; cy++) {
+        for (int cx = Math.max(minChunkX, camChunkX - loadRadius); cx <= Math.min(maxChunkX, camChunkX + loadRadius); cx++) {
+            for (int cy = Math.max(minChunkY, camChunkY - loadRadius); cy <= Math.min(maxChunkY, camChunkY + loadRadius); cy++) {
                 GridPoint2 pos = new GridPoint2(cx, cy);
                 if (!chunks.containsKey(pos)) {
                     chunks.put(pos, new Chunk(cx, cy));
@@ -112,10 +117,12 @@ public class World {
     /** Logic sinh Map + Hang động (Đã fix lỗi Overflow) */
     /** Logic sinh Map + Hang động (Đã giới hạn độ sâu & làm dẹt hang) */
     public void generateChunk(int chunkX, int chunkY) {
+        if (chunkX < 0 || chunkY < 0) return;
         int startX = chunkX * Constants.CHUNK_SIZE;
-        int endX = startX + Constants.CHUNK_SIZE;
+        int endX = Math.min(width, startX + Constants.CHUNK_SIZE);
         int startY = chunkY * Constants.CHUNK_SIZE;
-        int endY = startY + Constants.CHUNK_SIZE;
+        int endY = Math.min(height, startY + Constants.CHUNK_SIZE);
+        if (startX >= width || startY >= height) return;
 
         Random random = new Random(this.seed + chunkX);
         int baseGround = height / 2;
@@ -144,7 +151,7 @@ public class World {
                     // Dưới mốc bedrockY sẽ là lớp đá không thể đập được
                     block = new SimpleBlock(x, y, "bedrock", true, false, 999f, BlockPalette.getBedrock());
                 } else if (y < surface - 3 && y > bedrockY) {
-                    // LÀM DẸT HANG ĐỘNG: Hệ số Y (0.15f) lớn hơn X (0.05f) giúp hang xoải ngang, tránh vực sâu thẳng đứng
+                    // Hệ số Y lớn hơn X giúp hang xoải ngang, tránh vực sâu thẳng đứng.
                     double caveNoise = noiseUtils.noise2D(x * 0.05f, y * 0.15f);
                     if (caveNoise >= -0.25) {
                         block = new SimpleBlock(x, y, "stone", true, true, 1.2f, BlockPalette.getStone());
@@ -182,8 +189,8 @@ public class World {
     public void render(SpriteBatch batch, OrthographicCamera camera) {
         float halfW = camera.viewportWidth  * camera.zoom / 2f;
         float halfH = camera.viewportHeight * camera.zoom / 2f;
-        int minX = (int) Math.floor(camera.position.x - halfW) - 1;
-        int maxX = (int) Math.ceil(camera.position.x + halfW) + 1;
+        int minX = Math.max(0, (int) Math.floor(camera.position.x - halfW) - 1);
+        int maxX = Math.min(width - 1, (int) Math.ceil(camera.position.x + halfW) + 1);
         int minY = Math.max(0, (int) Math.floor(camera.position.y - halfH) - 1);
         int maxY = Math.min(height - 1, (int) Math.ceil(camera.position.y + halfH) + 1);
 

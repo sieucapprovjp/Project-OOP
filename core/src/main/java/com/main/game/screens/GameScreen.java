@@ -192,7 +192,7 @@ public class GameScreen extends BaseScreen {
         float halfW = camera.viewportWidth * camera.zoom / 2f;
         float halfH = camera.viewportHeight * camera.zoom / 2f;
 
-        // KIEN: Cập nhật World Chunk Streaming liên tục khi di chuyển
+        // KIEN: Cập nhật chunk trong phạm vi map khi di chuyển
         world.update(camera);
 
         if (player != null && player.isAlive()) {
@@ -202,7 +202,7 @@ public class GameScreen extends BaseScreen {
             camera.position.x += (targetX - camera.position.x) * followLerp;
             camera.position.y += (targetY - camera.position.y) * followLerp;
 
-            // XÓA clamp trục X để map chạy vô tận, chỉ giữ clamp đáy
+            camera.position.x = Math.max(halfW, Math.min(world.width - halfW, camera.position.x));
             camera.position.y = Math.max(halfH, camera.position.y);
         } else {
             float cameraSpeed = 16f;
@@ -210,6 +210,7 @@ public class GameScreen extends BaseScreen {
             if (Gdx.input.isKeyPressed(Input.Keys.D)) camera.position.x += cameraSpeed * delta;
             if (Gdx.input.isKeyPressed(Input.Keys.S)) camera.position.y -= cameraSpeed * delta;
             if (Gdx.input.isKeyPressed(Input.Keys.W)) camera.position.y += cameraSpeed * delta;
+            camera.position.x = Math.max(halfW, Math.min(world.width - halfW, camera.position.x));
             camera.position.y = Math.max(halfH, camera.position.y);
         }
 
