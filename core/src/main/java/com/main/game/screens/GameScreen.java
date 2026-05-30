@@ -3,14 +3,7 @@ package com.main.game.screens;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.Input;
-import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.Pixmap;
-import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.BitmapFont;
-import com.badlogic.gdx.graphics.g2d.GlyphLayout;
-import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector2;
-import com.main.game.GameState;
 import com.main.game.MainGame;
 import com.main.game.combat.PlayerAttackController;
 import com.main.game.entities.EntityManager;
@@ -23,13 +16,17 @@ import com.main.game.inventory.InventoryController;
 import com.main.game.inventory.InventoryInteractionHandler;
 import com.main.game.inventory.InventoryRenderer;
 import com.main.game.inventory.ItemStack;
+import com.main.game.inventory.StarterInventoryFactory;
 import com.main.game.items.BlockDropFactory;
 import com.main.game.items.DroppedItemManager;
 import com.main.game.navigation.ScreenId;
 import com.main.game.physics.PhysicsEngine;
-import com.main.game.utils.Constants;
+import com.main.game.ui.GameCameraController;
+import com.main.game.ui.GameHudRenderer;
+import com.main.game.ui.GameOverlayRenderer;
 import com.main.game.world.BlockPalette;
 import com.main.game.world.DemoBlockViewer;
+import com.main.game.world.SpawnSafetyController;
 import com.main.game.world.World;
 import com.main.game.worldgen.BiomeMobSpawner;
 
@@ -50,27 +47,12 @@ public class GameScreen extends BaseScreen {
     private InventoryController inventoryController;
     private InventoryRenderer inventoryRenderer;
     private InventoryInteractionHandler inventoryInteractionHandler;
+    private GameCameraController cameraController;
+    private GameHudRenderer hudRenderer;
+    private GameOverlayRenderer overlayRenderer;
+    private SpawnSafetyController spawnSafetyController;
     private boolean paused;
     private boolean dead;
-    private Texture overlayTexture;
-    private BitmapFont overlayFont;
-    private GlyphLayout overlayLayout;
-    private Matrix4 uiProjection;
-    private BitmapFont font;
-    private float spawnGuardTimer;
-    private float initialSpawnPlatformTimer;
-
-    // Pause & Death textures
-    private Texture pauseTexture;
-    private Texture deathTexture;
-
-    // HUD Textures
-    private Texture[] healthTextures;
-    private Texture[] hungerTextures;
-    private Texture hotbarTex;
-    private Texture selectorTex;
-    private Texture xpBgTex;
-    private Texture xpFgTex;
 
     private float deathBtnX, deathBtnY, deathBtnW, deathBtnH;
 
@@ -95,9 +77,8 @@ public class GameScreen extends BaseScreen {
         float spawnY = spawn.y;
 
         player = new Player(spawnX, spawnY, physics, world);
-        spawnGuardTimer = 5f;
-        initialSpawnPlatformTimer = 1.25f;
-        ensurePlayerSpawnSafety();
+        spawnSafetyController = new SpawnSafetyController();
+        spawnSafetyController.beginInitialSpawn(world, player);
 
         camera.position.set(player.getX(), player.getY(), 0f);
         camera.update();
@@ -111,10 +92,11 @@ public class GameScreen extends BaseScreen {
         playerAttackController = new PlayerAttackController();
         droppedItemManager = new DroppedItemManager();
         inventory = new Inventory();
-        populateStarterTools();
+        StarterInventoryFactory.populateStarterTools(inventory);
         inventoryController = new InventoryController();
         inventoryRenderer = new InventoryRenderer();
         inventoryInteractionHandler = new InventoryInteractionHandler();
+        cameraController = new GameCameraController();
         syncHeldItem();
         blockBreaker.setBlockBreakListener((block, worldRef) ->
             droppedItemManager.spawn(BlockDropFactory.createDrop(block, worldRef), worldRef));
@@ -125,34 +107,8 @@ public class GameScreen extends BaseScreen {
         paused = false;
         dead = false;
         camera.zoom = CAMERA_ZOOM;
-
-        Pixmap overlayPixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
-        overlayPixmap.setColor(Color.WHITE);
-        overlayPixmap.fill();
-        overlayTexture = new Texture(overlayPixmap);
-        overlayPixmap.dispose();
-
-        overlayFont = new BitmapFont();
-        overlayFont.setColor(Color.WHITE);
-        overlayLayout = new GlyphLayout();
-        uiProjection = new Matrix4();
-        font = new BitmapFont();
-        font.setColor(Color.WHITE);
-
-        // Load HUD textures
-        healthTextures = new Texture[21];
-        hungerTextures = new Texture[21];
-        for (int i = 0; i <= 20; i++) {
-            healthTextures[i] = loadTextureWithFallback("mvp/ui/health/health" + i + ".png", "mvp/ui/health/health0.png");
-            hungerTextures[i] = loadTextureWithFallback("mvp/ui/hunger/hunger_" + i + ".png", "mvp/ui/hunger/hunger_0.png");
-        }
-        hotbarTex = new Texture(Gdx.files.internal("mvp/ui/hotbar.png"));
-        selectorTex = new Texture(Gdx.files.internal("mvp/ui/selector.png"));
-        xpBgTex = new Texture(Gdx.files.internal("mvp/ui/xp/xp_bg.png"));
-        xpFgTex = new Texture(Gdx.files.internal("mvp/ui/xp/xp_fg.png"));
-
-        pauseTexture = new Texture(Gdx.files.internal("images/stage_sprite/pause.png"));
-        deathTexture = new Texture(Gdx.files.internal("images/stage_sprite/death_screen.png"));
+        hudRenderer = new GameHudRenderer();
+        overlayRenderer = new GameOverlayRenderer();
     }
 
     @Override
@@ -174,11 +130,7 @@ public class GameScreen extends BaseScreen {
 
         if (!dead) {
             entityManager.update(delta);
-            updateInitialSpawnPlatform(delta);
-            if (spawnGuardTimer > 0f) {
-                ensurePlayerSpawnSafety();
-                spawnGuardTimer -= delta;
-            }
+            spawnSafetyController.update(delta, world, player);
             droppedItemManager.update(delta, world, player, inventory);
             if (inventoryController.isInventoryOpen()) {
                 inventoryInteractionHandler.update(inventory, inventoryRenderer);
@@ -202,30 +154,9 @@ public class GameScreen extends BaseScreen {
             return;
         }
 
-        float halfW = camera.viewportWidth * camera.zoom / 2f;
-        float halfH = camera.viewportHeight * camera.zoom / 2f;
-
         // KIEN: Cập nhật chunk trong phạm vi map khi di chuyển
         world.update(camera);
-
-        if (player != null && player.isAlive()) {
-            float targetX = player.getX() + Player.PLAYER_W / 2f;
-            float targetY = player.getY() + Player.PLAYER_H / 2f;
-            float followLerp = Math.min(1f, delta * 7f);
-            camera.position.x += (targetX - camera.position.x) * followLerp;
-            camera.position.y += (targetY - camera.position.y) * followLerp;
-
-            camera.position.x = Math.max(halfW, Math.min(world.width - halfW, camera.position.x));
-            camera.position.y = Math.max(halfH, camera.position.y);
-        } else {
-            float cameraSpeed = 16f;
-            if (Gdx.input.isKeyPressed(Input.Keys.A)) camera.position.x -= cameraSpeed * delta;
-            if (Gdx.input.isKeyPressed(Input.Keys.D)) camera.position.x += cameraSpeed * delta;
-            if (Gdx.input.isKeyPressed(Input.Keys.S)) camera.position.y -= cameraSpeed * delta;
-            if (Gdx.input.isKeyPressed(Input.Keys.W)) camera.position.y += cameraSpeed * delta;
-            camera.position.x = Math.max(halfW, Math.min(world.width - halfW, camera.position.x));
-            camera.position.y = Math.max(halfH, camera.position.y);
-        }
+        cameraController.update(camera, world, player, delta);
 
         String heldItemId = getHeldItemId();
         player.setHeldItemId(heldItemId);
@@ -277,90 +208,12 @@ public class GameScreen extends BaseScreen {
         blockBreakOverlay.render(batch, blockBreaker, blockPlacementController);
         batch.end();
 
-        // ── HUD (Giữ nguyên của Team) ─────────────────────────
-        batch.setProjectionMatrix(viewport.getCamera().combined);
-        batch.begin();
-        if (BlockPalette.getGrass() != null) batch.draw(BlockPalette.getGrass(), 0.25f, Constants.VIEWPORT_HEIGHT_TILES - 1.25f, 1f, 1f);
-        if (BlockPalette.getStone() != null) batch.draw(BlockPalette.getStone(), 1.35f, Constants.VIEWPORT_HEIGHT_TILES - 1.25f, 1f, 1f);
-        if (BlockPalette.getBedrock() != null) batch.draw(BlockPalette.getBedrock(), 2.45f, Constants.VIEWPORT_HEIGHT_TILES - 1.25f, 1f, 1f);
+        hudRenderer.render(batch, viewport, inventory, inventoryController, inventoryRenderer,
+            inventoryInteractionHandler, player);
 
-        uiProjection.setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        batch.setProjectionMatrix(uiProjection);
-
-        float sw = Gdx.graphics.getWidth();
-        float sh = Gdx.graphics.getHeight();
-        float scale = 0.65f;
-        float hbW = hotbarTex.getWidth() * scale;
-        float hbH = hotbarTex.getHeight() * scale;
-        float hbX = (sw - hbW) / 2f;
-        float hbY = 10f;
-
-        inventoryRenderer.renderHotbar(batch, inventory, inventoryController, hotbarTex, selectorTex, sw, scale);
-        if (inventoryController.isInventoryOpen()) {
-            inventoryRenderer.renderInventory(batch, inventory, sw, sh, scale);
-            inventoryRenderer.renderCarriedStack(batch, inventoryInteractionHandler.getCarriedStack());
-        }
-
-        float xpScaleX = hbW / xpBgTex.getWidth();
-        float xpBgW = xpBgTex.getWidth() * xpScaleX;
-        float xpBgH = xpBgTex.getHeight() * xpScaleX;
-        float xpX = hbX + (hbW - xpBgW) / 2f;
-        float xpY = hbY + hbH + (5f * scale);
-        batch.draw(xpBgTex, xpX, xpY, xpBgW, xpBgH);
-        batch.draw(xpFgTex, xpX, xpY, xpBgW * 0.5f, xpBgH, 0, 0, (int) (xpFgTex.getWidth() * 0.5f), xpFgTex.getHeight(), false, false);
-
-        int hp = Math.max(0, Math.min(20, player.getHealth()));
-        Texture hpTex = healthTextures[hp];
-        float hpW = hpTex.getWidth() * scale;
-        float hpH = hpTex.getHeight() * scale;
-        float hpY = xpY + xpBgH + (5f * scale);
-        batch.draw(hpTex, hbX, hpY, hpW, hpH);
-
-        int hunger = 20;
-        Texture hungerTex = hungerTextures[hunger];
-        float hgW = hungerTex.getWidth() * (scale * 2f);
-        float hgH = hungerTex.getHeight() * (scale * 2f);
-        batch.draw(hungerTex, hbX + hbW - hgW, hpY, hgW, hgH);
-
-        font.setColor(Color.WHITE);
-        font.draw(batch, "FPS: " + Gdx.graphics.getFramesPerSecond(), 20, sh - 40);
-        font.draw(batch, "X: " + (int) player.getX() + "  Y: " + (int) player.getY(), 20, sh - 60);
-
-        batch.end();
-
-        if (paused) drawPauseOverlay();
-        else if (dead) drawDeathOverlay();
-        drawBrightnessOverlay();
-    }
-
-    private void drawBrightnessOverlay() {
-        GameState gameState = game.getGameState();
-        int brightness = gameState.brightness;
-        float alpha;
-        Color overlayColor;
-        if (brightness < 50) {
-            alpha = (50 - brightness) / 50f * 0.8f;
-            overlayColor = new Color(0f, 0f, 0f, alpha);
-        } else if (brightness > 50) {
-            alpha = (brightness - 50) / 50f * 0.4f;
-            overlayColor = new Color(1f, 1f, 1f, alpha);
-        } else return;
-
-        uiProjection.setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        batch.setProjectionMatrix(uiProjection);
-        batch.begin();
-        batch.setColor(overlayColor);
-        batch.draw(overlayTexture, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        batch.setColor(Color.WHITE);
-        batch.end();
-    }
-
-    private void drawDeathOverlay() {
-        uiProjection.setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        batch.setProjectionMatrix(uiProjection);
-        batch.begin();
-        batch.draw(deathTexture, 0f, 0f, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        batch.end();
+        if (paused) overlayRenderer.renderPause(batch);
+        else if (dead) overlayRenderer.renderDeath(batch);
+        overlayRenderer.renderBrightness(batch, game.getGameState());
     }
 
     private void handlePauseClick(float mx, float my) {
@@ -376,72 +229,8 @@ public class GameScreen extends BaseScreen {
     }
 
     private void handleDeathClick() {
-        world.removeInitialSpawnPlatform();
-        initialSpawnPlatformTimer = 0f;
-        Vector2 spawn = world.getSpawnPoint();
-        player.respawn(spawn.x, spawn.y);
-        ensurePlayerSpawnSafety();
+        spawnSafetyController.respawn(world, player);
         dead = false;
-    }
-
-    private void updateInitialSpawnPlatform(float delta) {
-        if (initialSpawnPlatformTimer <= 0f) return;
-        initialSpawnPlatformTimer -= delta;
-        if (initialSpawnPlatformTimer <= 0f) {
-            world.removeInitialSpawnPlatform();
-        }
-    }
-
-    private void ensurePlayerSpawnSafety() {
-        int tileY = Math.max(1, (int) Math.floor(player.getY()));
-        if (tileY <= World.DEEPSLATE_TOP_Y) {
-            world.removeInitialSpawnPlatform();
-            initialSpawnPlatformTimer = 0f;
-            Vector2 spawn = world.getSpawnPoint();
-            player.respawn(spawn.x, spawn.y);
-        }
-    }
-
-    private void populateStarterTools() {
-        String[] starterTools = {
-            "wood_pickaxe",
-            "wood_axe",
-            "wood_shovel",
-            "wood_hoe",
-            "stone_pickaxe",
-            "stone_axe",
-            "stone_shovel",
-            "stone_sword",
-            "stone_hoe",
-            "copper_pickaxe",
-            "copper_axe",
-            "copper_shovel",
-            "copper_sword",
-            "copper_hoe",
-            "iron_pickaxe",
-            "iron_axe",
-            "iron_shovel",
-            "iron_sword",
-            "iron_hoe",
-            "gold_pickaxe",
-            "gold_axe",
-            "gold_shovel",
-            "gold_sword",
-            "gold_hoe",
-            "diamond_pickaxe",
-            "diamond_axe",
-            "diamond_shovel",
-            "diamond_sword",
-            "diamond_hoe",
-            "netherite_pickaxe",
-            "netherite_axe",
-            "netherite_shovel",
-            "netherite_sword",
-            "netherite_hoe"
-        };
-        for (int i = 0; i < starterTools.length && i < inventory.getTotalSize(); i++) {
-            inventory.setSlot(i, new ItemStack(starterTools[i], 1));
-        }
     }
 
     private String getHeldItemId() {
@@ -489,14 +278,6 @@ public class GameScreen extends BaseScreen {
         syncHeldItem();
     }
 
-    private void drawPauseOverlay() {
-        uiProjection.setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        batch.setProjectionMatrix(uiProjection);
-        batch.begin();
-        batch.draw(pauseTexture, 0f, 0f, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        batch.end();
-    }
-
     private void updateDeathButtonLayout() {
         float sw = Gdx.graphics.getWidth();
         float sh = Gdx.graphics.getHeight();
@@ -506,25 +287,12 @@ public class GameScreen extends BaseScreen {
         deathBtnY = sh * 0.38f;
     }
 
-    private Texture loadTextureWithFallback(String path, String fallbackPath) {
-        return Gdx.files.internal(path).exists() ? new Texture(Gdx.files.internal(path)) : new Texture(Gdx.files.internal(fallbackPath));
-    }
-
     @Override
     public void dispose() {
         super.dispose();
-        if (pauseTexture != null) pauseTexture.dispose();
-        if (deathTexture != null) deathTexture.dispose();
-        font.dispose();
         BlockPalette.dispose();
-        overlayTexture.dispose();
-        overlayFont.dispose();
-        if (healthTextures != null) for (Texture t : healthTextures) if (t != null) t.dispose();
-        if (hungerTextures != null) for (Texture t : hungerTextures) if (t != null) t.dispose();
-        if (hotbarTex != null) hotbarTex.dispose();
-        if (selectorTex != null) selectorTex.dispose();
-        if (xpBgTex != null) xpBgTex.dispose();
-        if (xpFgTex != null) xpFgTex.dispose();
+        if (hudRenderer != null) hudRenderer.dispose();
+        if (overlayRenderer != null) overlayRenderer.dispose();
         if (blockBreakOverlay != null) blockBreakOverlay.dispose();
         if (droppedItemManager != null) droppedItemManager.clear();
         if (inventoryRenderer != null) inventoryRenderer.dispose();
