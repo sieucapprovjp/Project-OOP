@@ -90,7 +90,7 @@ class PlayerRenderer {
             batch.setColor(1f, 0.5f, 0.5f, 1f);
         }
 
-        TextureRegion head = player.isFacingRight() ? regHeadL : regHeadR;
+        TextureRegion head = player.isFacingRight() ? regHeadR : regHeadL;
         TextureRegion body = regBodyR;
         TextureRegion armFront = regArmR;
         TextureRegion armBack = regArmL;
