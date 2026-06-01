@@ -5,22 +5,39 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.math.Vector2;
 import com.main.game.MainGame;
+import com.main.game.blocks.AbstractBlock;
 import com.main.game.combat.PlayerAttackController;
+import com.main.game.crafting.CraftingController;
 import com.main.game.entities.EntityManager;
 import com.main.game.entities.player.Player;
+import com.main.game.utilityblock.chest.ChestInteractionController;
+import com.main.game.utilityblock.chest.ChestInteractionHandler;
+import com.main.game.utilityblock.chest.ChestManager;
+import com.main.game.utilityblock.chest.ChestRenderer;
+import com.main.game.utilityblock.chest.ChestState;
+import com.main.game.utilityblock.furnace.FurnaceInteractionController;
+import com.main.game.utilityblock.furnace.FurnaceInteractionHandler;
+import com.main.game.utilityblock.furnace.FurnaceManager;
+import com.main.game.utilityblock.furnace.FurnaceRenderer;
+import com.main.game.utilityblock.furnace.FurnaceState;
 import com.main.game.interaction.BlockBreakOverlay;
 import com.main.game.interaction.BlockBreaker;
 import com.main.game.interaction.BlockPlacementController;
+import com.main.game.utilityblock.craftingtable.CraftingTableInteractionController;
 import com.main.game.inventory.Inventory;
 import com.main.game.inventory.InventoryController;
 import com.main.game.inventory.InventoryInteractionHandler;
 import com.main.game.inventory.InventoryRenderer;
 import com.main.game.inventory.ItemStack;
-import com.main.game.inventory.StarterInventoryFactory;
+import com.main.game.inventory.StarterInventoryKit;
+import com.main.game.inventory.ToolRegistry;
 import com.main.game.items.BlockDropFactory;
 import com.main.game.items.DroppedItemManager;
+import com.main.game.items.HarvestEntry;
+import com.main.game.items.MobDropFactory;
 import com.main.game.navigation.ScreenId;
 import com.main.game.physics.PhysicsEngine;
+import com.main.game.time.DayNightCycle;
 import com.main.game.ui.GameCameraController;
 import com.main.game.ui.GameHudRenderer;
 import com.main.game.ui.GameOverlayRenderer;
@@ -28,7 +45,9 @@ import com.main.game.world.BlockPalette;
 import com.main.game.world.DemoBlockViewer;
 import com.main.game.world.SpawnSafetyController;
 import com.main.game.world.World;
+import com.main.game.entities.mob.Mob;
 import com.main.game.worldgen.BiomeMobSpawner;
+import java.util.Random;
 
 public class GameScreen extends BaseScreen {
 
@@ -40,6 +59,9 @@ public class GameScreen extends BaseScreen {
     private EntityManager entityManager;
     private BlockBreaker blockBreaker;
     private BlockPlacementController blockPlacementController;
+    private CraftingTableInteractionController craftingTableInteractionController;
+    private ChestInteractionController chestInteractionController;
+    private FurnaceInteractionController furnaceInteractionController;
     private BlockBreakOverlay blockBreakOverlay;
     private PlayerAttackController playerAttackController;
     private DroppedItemManager droppedItemManager;
@@ -47,10 +69,22 @@ public class GameScreen extends BaseScreen {
     private InventoryController inventoryController;
     private InventoryRenderer inventoryRenderer;
     private InventoryInteractionHandler inventoryInteractionHandler;
+    private ChestRenderer chestRenderer;
+    private ChestInteractionHandler chestInteractionHandler;
+    private ChestManager chestManager;
+    private ChestState openChestState;
+    private FurnaceRenderer furnaceRenderer;
+    private FurnaceInteractionHandler furnaceInteractionHandler;
+    private FurnaceManager furnaceManager;
+    private FurnaceState openFurnaceState;
+    private CraftingController craftingController;
     private GameCameraController cameraController;
     private GameHudRenderer hudRenderer;
     private GameOverlayRenderer overlayRenderer;
     private SpawnSafetyController spawnSafetyController;
+    private BiomeMobSpawner mobSpawner;
+    private DayNightCycle dayNightCycle;
+    private Random mobDropRandom;
     private boolean paused;
     private boolean dead;
 
@@ -88,21 +122,34 @@ public class GameScreen extends BaseScreen {
         entityManager.setPlayer(player);
         blockBreaker = new BlockBreaker();
         blockPlacementController = new BlockPlacementController();
+        craftingTableInteractionController = new CraftingTableInteractionController();
+        chestInteractionController = new ChestInteractionController();
+        furnaceInteractionController = new FurnaceInteractionController();
         blockBreakOverlay = new BlockBreakOverlay();
         playerAttackController = new PlayerAttackController();
+        playerAttackController.setMobDeathListener(this::handleMobKilled);
         droppedItemManager = new DroppedItemManager();
+        mobDropRandom = new Random(currentSeed + 7717L);
         inventory = new Inventory();
-        StarterInventoryFactory.populateStarterTools(inventory);
+        StarterInventoryKit.grant(inventory);
+        player.setArmorLoadout(inventory.getArmorLoadout());
         inventoryController = new InventoryController();
         inventoryRenderer = new InventoryRenderer();
         inventoryInteractionHandler = new InventoryInteractionHandler();
+        chestRenderer = new ChestRenderer();
+        chestInteractionHandler = new ChestInteractionHandler();
+        chestManager = new ChestManager();
+        furnaceRenderer = new FurnaceRenderer();
+        furnaceInteractionHandler = new FurnaceInteractionHandler();
+        furnaceManager = new FurnaceManager();
+        craftingController = new CraftingController();
         cameraController = new GameCameraController();
         syncHeldItem();
-        blockBreaker.setBlockBreakListener((block, worldRef) ->
-            droppedItemManager.spawn(BlockDropFactory.createDrop(block, worldRef), worldRef));
+        blockBreaker.setBlockBreakListener(this::handleBlockBroken);
 
-        // Spawner của team sử dụng seed hiện tại
-        BiomeMobSpawner.spawnInitialMobs(world, player, physics, entityManager, currentSeed);
+        dayNightCycle = new DayNightCycle();
+        mobSpawner = new BiomeMobSpawner(currentSeed);
+        mobSpawner.spawnInitial(world, player, physics, entityManager, dayNightCycle.isNight());
 
         paused = false;
         dead = false;
@@ -119,8 +166,9 @@ public class GameScreen extends BaseScreen {
         if (Gdx.input.isKeyJustPressed(Input.Keys.K)) player.kill();
         if (Gdx.input.isKeyJustPressed(Input.Keys.B)) player.ban();
 
-        inventoryController.update();
-        if (inventoryController.wasJustClosed()) inventoryInteractionHandler.onCloseInventory(inventory);
+        boolean inventoryKeyPressed = inventoryController.update();
+        if (inventoryKeyPressed) handleInventoryKey();
+        if (inventoryController.wasJustClosed()) handleInventoryClosed();
         syncHeldItem();
 
         if (paused) {
@@ -129,11 +177,25 @@ public class GameScreen extends BaseScreen {
         }
 
         if (!dead) {
+            if (dayNightCycle != null) {
+                dayNightCycle.update(delta);
+            }
+            furnaceManager.update(delta);
             entityManager.update(delta);
+            if (mobSpawner != null) {
+                mobSpawner.update(delta, world, player, physics, entityManager,
+                    dayNightCycle == null || dayNightCycle.isNight());
+            }
             spawnSafetyController.update(delta, world, player);
             droppedItemManager.update(delta, world, player, inventory);
             if (inventoryController.isInventoryOpen()) {
-                inventoryInteractionHandler.update(inventory, inventoryRenderer);
+                if (openChestState != null) {
+                    chestInteractionHandler.update(inventory, openChestState, chestRenderer);
+                } else if (openFurnaceState != null) {
+                    furnaceInteractionHandler.update(inventory, openFurnaceState, furnaceRenderer);
+                } else {
+                    inventoryInteractionHandler.update(inventory, inventoryRenderer, craftingController);
+                }
                 syncHeldItem();
             }
         }
@@ -160,18 +222,22 @@ public class GameScreen extends BaseScreen {
 
         String heldItemId = getHeldItemId();
         player.setHeldItemId(heldItemId);
+        boolean consumedFood = tryConsumeHeldFood(heldItemId);
         boolean placedBlock = false;
-        if (blockPlacementController.update(player, world, camera, viewport, heldItemId,
+        if (!consumedFood && blockPlacementController.update(player, world, camera, viewport, heldItemId,
             inventoryController.isInventoryOpen())) {
             player.playPlaceAnimation(blockPlacementController.getHoveredPlaceX() + 0.5f, heldItemId);
-            reduceHeldBlockStack();
+            reduceHeldStack();
             blockBreaker.cancel();
             placedBlock = true;
         }
         boolean attacked = playerAttackController.update(delta, player, entityManager,
             camera, viewport, inventoryController.isInventoryOpen(), heldItemId);
+        if (shouldPlaySwordSlash(heldItemId)) {
+            player.playAttackAnimation(mouseWorldX(), heldItemId);
+        }
         boolean brokeBlock = false;
-        if (placedBlock || attacked || inventoryController.isInventoryOpen()) {
+        if (consumedFood || placedBlock || attacked || inventoryController.isInventoryOpen()) {
             blockBreaker.cancel();
         } else {
             brokeBlock = blockBreaker.update(delta, player, world, camera, viewport, heldItemId);
@@ -194,6 +260,11 @@ public class GameScreen extends BaseScreen {
         float r = (0.4f * lightRatio) + (0.02f * (1 - lightRatio));
         float g = (0.7f * lightRatio) + (0.02f * (1 - lightRatio));
         float b = (1.0f * lightRatio) + (0.05f * (1 - lightRatio));
+        int globalLight = dayNightCycle == null ? 0 : dayNightCycle.getGlobalLight();
+        float nightFactor = dayNightCycle == null ? 0f : dayNightCycle.getNightFactor();
+        r = lerp(r, 0.015f, nightFactor * 0.9f);
+        g = lerp(g, 0.025f, nightFactor * 0.9f);
+        b = lerp(b, 0.08f, nightFactor * 0.9f);
 
         Gdx.gl.glClearColor(r, g, b, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
@@ -203,13 +274,17 @@ public class GameScreen extends BaseScreen {
 
         batch.begin();
         world.render(batch, camera);
+        furnaceManager.render(batch, world, camera);
         droppedItemManager.render(batch);
         entityManager.render(batch);
         blockBreakOverlay.render(batch, blockBreaker, blockPlacementController);
         batch.end();
 
+        overlayRenderer.renderWorldDarkness(batch, globalLight);
+
         hudRenderer.render(batch, viewport, inventory, inventoryController, inventoryRenderer,
-            inventoryInteractionHandler, player);
+            inventoryInteractionHandler, craftingController, furnaceRenderer, furnaceInteractionHandler,
+            openFurnaceState, chestRenderer, chestInteractionHandler, openChestState, player);
 
         if (paused) overlayRenderer.renderPause(batch);
         else if (dead) overlayRenderer.renderDeath(batch);
@@ -231,6 +306,75 @@ public class GameScreen extends BaseScreen {
     private void handleDeathClick() {
         spawnSafetyController.respawn(world, player);
         dead = false;
+    }
+
+    private void handleInventoryKey() {
+        if (inventoryController.isInventoryOpen()) {
+            inventoryController.close();
+            return;
+        }
+        if (paused || dead) {
+            return;
+        }
+        if (chestInteractionController.canOpen(player, world, camera, viewport)) {
+            craftingController.closeCrafting(inventory);
+            openFurnaceState = null;
+            openChestState = chestManager.getOrCreate(world,
+                chestInteractionController.getHoveredTileX(),
+                chestInteractionController.getHoveredTileY());
+            inventoryController.open();
+            return;
+        }
+        openChestState = null;
+        if (furnaceInteractionController.canOpen(player, world, camera, viewport)) {
+            craftingController.closeCrafting(inventory);
+            openChestState = null;
+            openFurnaceState = furnaceManager.getOrCreate(world,
+                furnaceInteractionController.getHoveredTileX(),
+                furnaceInteractionController.getHoveredTileY());
+            inventoryController.open();
+            return;
+        }
+        openFurnaceState = null;
+        if (craftingTableInteractionController.canOpen(player, world, camera, viewport)) {
+            craftingController.openTableCrafting(inventory);
+        } else {
+            craftingController.openPlayerCrafting(inventory);
+        }
+        inventoryController.open();
+    }
+
+    private void handleInventoryClosed() {
+        if (openFurnaceState != null) {
+            furnaceInteractionHandler.onCloseInventory(inventory);
+            openFurnaceState = null;
+            return;
+        }
+        if (openChestState != null) {
+            chestInteractionHandler.onCloseInventory(inventory);
+            openChestState = null;
+            return;
+        }
+        inventoryInteractionHandler.onCloseInventory(inventory, craftingController);
+    }
+
+    private void handleBlockBroken(AbstractBlock block, World worldRef) {
+        if (block != null && "furnace".equals(block.getBlockId())) {
+            furnaceManager.dropContents(block, worldRef, droppedItemManager);
+        }
+        if (block != null && "chest".equals(block.getBlockId())) {
+            chestManager.dropContents(block, worldRef, droppedItemManager);
+        }
+        droppedItemManager.spawn(BlockDropFactory.createDrop(block, worldRef, getHeldItemId()), worldRef);
+    }
+
+    private void handleMobKilled(Mob mob) {
+        if (mob == null || world == null || droppedItemManager == null || mobDropRandom == null) {
+            return;
+        }
+        for (HarvestEntry entry : MobDropFactory.createDrops(mob, world, mobDropRandom)) {
+            droppedItemManager.spawn(entry, world);
+        }
     }
 
     private String getHeldItemId() {
@@ -262,7 +406,31 @@ public class GameScreen extends BaseScreen {
         syncHeldItem();
     }
 
-    private void reduceHeldBlockStack() {
+    private boolean shouldPlaySwordSlash(String heldItemId) {
+        return inventoryController != null
+            && !inventoryController.isInventoryOpen()
+            && ToolRegistry.isSword(heldItemId)
+            && Gdx.input.isButtonJustPressed(Input.Buttons.LEFT);
+    }
+
+    private float mouseWorldX() {
+        Vector2 mouseWorld = new Vector2(Gdx.input.getX(), Gdx.input.getY());
+        viewport.unproject(mouseWorld);
+        return mouseWorld.x;
+    }
+
+    private boolean tryConsumeHeldFood(String heldItemId) {
+        if (player == null || inventory == null || inventoryController == null
+            || inventoryController.isInventoryOpen()
+            || !Gdx.input.isButtonJustPressed(Input.Buttons.RIGHT)
+            || !player.eat(heldItemId)) {
+            return false;
+        }
+        reduceHeldStack();
+        return true;
+    }
+
+    private void reduceHeldStack() {
         if (inventory == null || inventoryController == null) {
             return;
         }
@@ -287,6 +455,11 @@ public class GameScreen extends BaseScreen {
         deathBtnY = sh * 0.38f;
     }
 
+    private float lerp(float from, float to, float progress) {
+        float t = Math.max(0f, Math.min(1f, progress));
+        return from + (to - from) * t;
+    }
+
     @Override
     public void dispose() {
         super.dispose();
@@ -296,6 +469,10 @@ public class GameScreen extends BaseScreen {
         if (blockBreakOverlay != null) blockBreakOverlay.dispose();
         if (droppedItemManager != null) droppedItemManager.clear();
         if (inventoryRenderer != null) inventoryRenderer.dispose();
+        if (chestRenderer != null) chestRenderer.dispose();
+        if (chestManager != null) chestManager.clear();
+        if (furnaceRenderer != null) furnaceRenderer.dispose();
+        if (furnaceManager != null) furnaceManager.clear();
         entityManager.dispose();
     }
 

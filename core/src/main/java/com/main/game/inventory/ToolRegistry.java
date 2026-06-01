@@ -88,13 +88,21 @@ public final class ToolRegistry {
         "deepslate_co", "deepslate_io", "deepslate_go", "deepslate_do",
         "deepslate_copper", "ore_lapis_deepslate", "deepslate_ro", "deepslate_eo"
     );
-    private static final Set<String> AXE_BLOCKS = Set.of("wood", "planks", "leaves");
+    private static final Set<String> AXE_BLOCKS = Set.of(
+        "wood", "planks", "leaves",
+        "natural_wood",
+        "desert_oak_leaves", "desert_oak_leaves_2",
+        "spruce_log", "natural_spruce_log", "spruce_planks", "spruce_leaves",
+        "cherry_log", "natural_cherry_log", "cherry_planks",
+        "cherry_leaves", "cherry_leaves_2", "cherry_leaves_5", "cherry_leaves_6"
+    );
     private static final Set<String> SHOVEL_BLOCKS = Set.of("dirt", "grass", "sand", "snow");
 
     static {
         register("wood_pickaxe", ToolType.PICKAXE, ToolMaterial.WOOD, "tools/wood/wood_pickaxe", 1.5f, 3, 30);
         register("wood_axe", ToolType.AXE, ToolMaterial.WOOD, "tools/wood/wood_axe_v1", "tools/wood/wood_axe_v2", 1.5f, 4, 30);
         register("wood_shovel", ToolType.SHOVEL, ToolMaterial.WOOD, "tools/wood/wood_shovel", 1.5f, 2, 30);
+        register("wood_sword", ToolType.SWORD, ToolMaterial.WOOD, "tools/wood/wood_sword", 1.0f, 4, 30);
         register("wood_hoe", ToolType.HOE, ToolMaterial.WOOD, "tools/wood/wood_hoe", 1.0f, 2, 30);
 
         register("stone_pickaxe", ToolType.PICKAXE, ToolMaterial.STONE, "tools/stone/stone_pickaxe", 2.0f, 4, 45);
@@ -119,7 +127,7 @@ public final class ToolRegistry {
         register("gold_axe", ToolType.AXE, ToolMaterial.GOLD, "tools/gold/gold_axe_v1", "tools/gold/gold_axe_v2", 3.5f, 5, 24);
         register("gold_shovel", ToolType.SHOVEL, ToolMaterial.GOLD, "tools/gold/gold_shovel", 3.5f, 3, 24);
         register("gold_sword", ToolType.SWORD, ToolMaterial.GOLD, "tools/gold/gold_sword", 1.0f, 5, 24);
-        register("gold_hoe", ToolType.HOE, ToolMaterial.GOLD, "tools/gold/gold_hoe", 1.0f, 3, 24);
+        register("gold_hoe", ToolType.HOE, ToolMaterial.GOLD, "tools/gold/gold__hoe", 1.0f, 3, 24);
 
         register("diamond_pickaxe", ToolType.PICKAXE, ToolMaterial.DIAMOND, "tools/diamond/diamond_pickaxe", 4.0f, 6, 110);
         register("diamond_axe", ToolType.AXE, ToolMaterial.DIAMOND, "tools/diamond/diamond_axe_v1", "tools/diamond/diamond_axe_v2", 4.0f, 7, 110);
@@ -163,6 +171,21 @@ public final class ToolRegistry {
         return tool == null ? 0 : tool.getMaxDurability();
     }
 
+    public static int getHarvestLevel(String itemId) {
+        ToolDefinition tool = get(itemId);
+        return tool == null ? 0 : harvestLevel(tool.getMaterial());
+    }
+
+    public static boolean isPickaxe(String itemId) {
+        ToolDefinition tool = get(itemId);
+        return tool != null && tool.getType() == ToolType.PICKAXE;
+    }
+
+    public static boolean isSword(String itemId) {
+        ToolDefinition tool = get(itemId);
+        return tool != null && tool.getType() == ToolType.SWORD;
+    }
+
     private static void register(String itemId, ToolType type, ToolMaterial material,
                                  String textureName, float miningMultiplier, int attackDamage,
                                  int maxDurability) {
@@ -181,5 +204,14 @@ public final class ToolRegistry {
         if (type == ToolType.AXE) return AXE_BLOCKS.contains(blockId);
         if (type == ToolType.SHOVEL) return SHOVEL_BLOCKS.contains(blockId);
         return false;
+    }
+
+    private static int harvestLevel(ToolMaterial material) {
+        if (material == ToolMaterial.WOOD) return 1;
+        if (material == ToolMaterial.STONE || material == ToolMaterial.COPPER || material == ToolMaterial.GOLD) return 2;
+        if (material == ToolMaterial.IRON) return 3;
+        if (material == ToolMaterial.DIAMOND) return 4;
+        if (material == ToolMaterial.NETHERITE) return 5;
+        return 0;
     }
 }

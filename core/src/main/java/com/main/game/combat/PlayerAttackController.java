@@ -21,6 +21,11 @@ public class PlayerAttackController {
 
     private final Vector2 mouseWorld = new Vector2();
     private float cooldownTimer = 0f;
+    private MobDeathListener mobDeathListener;
+
+    public void setMobDeathListener(MobDeathListener mobDeathListener) {
+        this.mobDeathListener = mobDeathListener;
+    }
 
     public boolean update(float delta, Player player, EntityManager entityManager,
                           OrthographicCamera camera, Viewport viewport, boolean inputBlocked,
@@ -42,8 +47,12 @@ public class PlayerAttackController {
 
         float direction = target.getX() + target.getWidth() / 2f >= player.getX() + player.getWidth() / 2f ? 1f : -1f;
         if (target.takeDamage(getDamage(player, heldItemId))) {
+            boolean killed = !target.isAlive();
             target.onPlayerHit(player);
             target.applyKnockback(direction * KNOCKBACK_X, KNOCKBACK_Y);
+            if (killed && mobDeathListener != null) {
+                mobDeathListener.onMobKilled(target);
+            }
             cooldownTimer = ATTACK_COOLDOWN;
             return true;
         }

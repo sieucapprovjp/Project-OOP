@@ -10,7 +10,7 @@ public class ItemStack {
     public ItemStack(String itemId, int count) {
         this.itemId = itemId;
         this.count = count;
-        this.maxDurability = ToolRegistry.getMaxDurability(itemId);
+        this.maxDurability = ItemRegistry.getMaxDurability(itemId);
         this.durability = maxDurability;
     }
 

@@ -1,313 +1,414 @@
 # codex.md
 
-## Project Goal
-- A 2D Minecraft-style game built with Java + LibGDX.
-- Vertical slice priority: `world + player + collision + 1 mob`.
+## File Purpose
+- Record a concise summary of completed project features.
+- Provide a quick progress snapshot before starting new work.
+- Canonical path for future sessions: `doc/codex.md`.
+- Project root for all paths below: repository root.
+- Future Codex sessions should read this file first to understand the current system state before planning or implementing new work.
+- This file does not replace `README.md`, is not a detailed design document, and should not store unfinished plans.
 
-## Stack And Structure
-- Engine: LibGDX.
-- Build: Gradle (`gradlew.bat`).
-- Modules:
-  - `core`: game logic, screens, world, entities, physics, navigation.
-  - `lwjgl3`: desktop launcher.
-  - `assets`: textures, sprites, fonts.
+## Working Rules For Codex
 
-## Core File Map
-- `core/src/main/java/com/main/game/MainGame.java`
-  - Game entry point (`Game`).
-  - Creates shared resources: `SpriteBatch`, `AssetManager`, `ScreenRouter`, `GameState`.
-  - `render()` calls `screenRouter.flush()` before `super.render()`.
-  - Responsible for disposing shared resources when the game exits.
-- `core/src/main/java/com/main/game/GameState.java`
-  - Stores global state used by multiple screens, for example `brightness`.
+### Scope And Architecture
+- Do not make large architecture changes unless explicitly requested.
+- When adding a new feature, prefer creating a focused class/file in the appropriate module.
+- Integration files such as `GameScreen` should only call short APIs such as `update`, `render`, and `dispose`; they should not absorb full feature logic.
+- Keep changes small and within the requested scope.
+- Prioritize gameplay blockers first, especially physics, input, and state bugs.
 
-- `core/src/main/java/com/main/game/navigation/ScreenId.java`
-  - Enum identifiers for screens (`LOADING`, `MENU`, `GAME`, `PAUSE`, `GAME_OVER`, ...).
-- `core/src/main/java/com/main/game/navigation/ScreenRouter.java`
-  - Safe screen transition mechanism through `request()` + `flush()`.
-  - Enforces lifecycle order: `onExit -> dispose -> create new screen -> onEnter`.
-  - Avoids switching to the same current screen.
+### Required Change Report
+- Every change report must include the files changed.
+- Every change report must explain which mechanism or behavior was affected.
+- Every change report must include how to verify the change in game, including input steps or scene setup and the expected result.
 
-- `core/src/main/java/com/main/game/screens/BaseScreen.java`
-  - Base class for screens. Holds references to `MainGame`, `batch`, `camera`, `viewport`.
-  - Defines `onEnter()` / `onExit()` hooks and `update()` / `draw()`.
-- `core/src/main/java/com/main/game/screens/GameScreen.java`
-  - Main gameplay integration point: `World`, `PhysicsEngine`, `Player`, `EntityManager`.
-  - Handles test transition input (`ESC/P`, `M`, `K`, ...), camera follow, HUD, overlay.
-  - Render order: world -> entities -> HUD -> overlay.
-- `core/src/main/java/com/main/game/screens/StateScreen.java`
-  - State screen (`PAUSE`, `GAME_OVER`) with navigation back to game/menu.
-- `core/src/main/java/com/main/game/screens/MenuScreen.java`
-  - Main menu.
-- `core/src/main/java/com/main/game/screens/LoadingScreen.java`
-  - Loading screen and transition.
-- `core/src/main/java/com/main/game/screens/ModeSelectScreen.java`
-  - Game mode selection.
-- `core/src/main/java/com/main/game/screens/SettingsScreen.java`
-  - Settings screen, affects `GameState`.
+### Code Comment Rules
+- Comments should explain why a decision exists or what trade-off is being made.
+- Do not write comments that merely restate obvious code behavior.
+- In game loop or physics logic, use short comments to document assumptions.
+- TODO comments must include:
+  - The scope of work.
+  - The completion condition.
+  - The owner when known.
+- Example:
+  ```java
+  // Why: resolve Y before X to avoid corner snagging while falling onto blocks.
+  // TODO(lhung): add left/right AABB collision before merging the physics branch.
+  ```
 
-- `core/src/main/java/com/main/game/world/World.java`
-  - Manages the world grid, terrain generation, spawn point, and camera-based rendering.
-  - Priority optimization target when moving to chunk streaming.
-- `core/src/main/java/com/main/game/world/BlockPalette.java`
-  - Loads and stores shared block textures.
-  - Has fallback textures and centralized disposal.
-- `core/src/main/java/com/main/game/world/DemoBlockViewer.java`
-  - Debug tool for spawning and quickly viewing blocks in the world.
-- `core/src/main/java/com/main/game/worldgen/*.java`
-  - New world generation module: biome, surface rules, decoration, house structure, spawn safety, biome-based mob spawning.
+### PR And Review Comment Rules
+- Use severity levels: `blocker`, `major`, `minor`, and `nit`.
+- Each review comment should include:
+  - The observed issue.
+  - The gameplay or bug risk.
+  - A concrete fix suggestion.
+- Prioritize review focus on crashes, incorrect collision, incorrect state, resource leaks, and broken screen lifecycle.
 
-- `core/src/main/java/com/main/game/blocks/AbstractBlock.java`
-  - Block contract with physical properties: `solid`, `breakable`, `hardness`, `bounds`.
-- `core/src/main/java/com/main/game/blocks/SimpleBlock.java`
-  - Basic implementation for blocks.
-- `core/src/main/java/com/main/game/blocks/types/*.java`
-  - Block groups by domain (`Nature`, `Ore`, `Stone`, `Wood`, `Utility`).
+### Screen And Resource Rules
+- Do not call `setScreen()` directly from gameplay modules.
+- Do not dispose the shared `SpriteBatch` or `AssetManager` inside a `Screen`.
+- To change screens, call `game.getScreenRouter().request(...)`.
 
-- `core/src/main/java/com/main/game/entities/Entity.java`
-  - Base entity: position, velocity, bounds, alive/dead state.
-- `core/src/main/java/com/main/game/entities/player/Player.java`
-  - Player input + state machine + health/damage/respawn.
-- `core/src/main/java/com/main/game/entities/player/PlayerRenderer.java`
-  - Renders the player rig by body part, including arm swing while mining.
-- `core/src/main/java/com/main/game/entities/mob/Mob.java`
-  - Mob orchestration: state, health, physics, AI/render calls.
-- `core/src/main/java/com/main/game/entities/mob/MobBrain.java`
-  - Mob AI (`PATROL`, `CHASE`, `ATTACK`).
-- `core/src/main/java/com/main/game/entities/mob/MobAllegiance.java`
-  - Integer allegiance constants: `TAMED = 0`, `PASSIVE = 1`, `HOSTILE = 2`.
-- `core/src/main/java/com/main/game/entities/mob/MobProfile.java`
-  - Per-mob-type parameters: allegiance, aggro, speed, damage, HP, size.
-- `core/src/main/java/com/main/game/entities/mob/MobRenderer.java`
-  - Chooses animation frames and renders mobs.
-- `core/src/main/java/com/main/game/entities/mob/MobAssetPack.java`
-  - Loads assets by mob type, with fallback when frames are missing.
-- `core/src/main/java/com/main/game/entities/mob/MobMovementHelper.java`
-  - Helper for simple obstacle jumping.
-- `core/src/main/java/com/main/game/entities/mob/MobSightHelper.java`
-  - Line-of-sight checks to prevent attacks through blocks.
-- `core/src/main/java/com/main/game/entities/EntityManager.java`
-  - Centralized update/render/dispose for player + mob list.
-- `core/src/main/java/com/main/game/entities/EntityState.java`
-  - Entity state enum (`IDLE`, `RUN`, `JUMP`, `FALL`, ...).
+### Task Checklist
+- Restate the task and the affected module, such as world, player, physics, screen, or assets.
+- Read the related files under `core/src/main/java/com/main/game/...` before editing.
+- Make a small, scoped change.
+- Run `lwjgl3:run` or the relevant tests when applicable.
+- Report the result and include manual in-game verification steps.
 
-- `core/src/main/java/com/main/game/combat/PlayerAttackController.java`
-  - Handles player left-click melee attacks against mobs, attack cooldown, falling critical damage, target hit-test, and knockback.
+## Completed Features
 
-- `core/src/main/java/com/main/game/interaction/BlockBreaker.java`
-  - Handles block hover/breaking, covered-block checks, and the unbreakable block list.
-- `core/src/main/java/com/main/game/interaction/BlockBreakOverlay.java`
-  - Renders cursor and crack texture while breaking blocks.
+### Screens And Navigation
+- Separate screens exist for loading, menu, mode select, game, pause, game over, and settings.
+- `ScreenRouter` handles safe screen transitions through request/flush.
+- `MainGame` owns shared resources such as `SpriteBatch` and `AssetManager`.
+- Related files:
+  - `core/src/main/java/com/main/game/MainGame.java`
+  - `core/src/main/java/com/main/game/GameState.java`
+  - `core/src/main/java/com/main/game/navigation/ScreenRouter.java`
+  - `core/src/main/java/com/main/game/navigation/ScreenId.java`
+  - `core/src/main/java/com/main/game/screens/BaseScreen.java`
+  - `core/src/main/java/com/main/game/screens/LoadingScreen.java`
+  - `core/src/main/java/com/main/game/screens/MenuScreen.java`
+  - `core/src/main/java/com/main/game/screens/ModeSelectScreen.java`
+  - `core/src/main/java/com/main/game/screens/GameScreen.java`
+  - `core/src/main/java/com/main/game/screens/StateScreen.java`
+  - `core/src/main/java/com/main/game/screens/SettingsScreen.java`
 
-- `core/src/main/java/com/main/game/items/DroppedItemManager.java`
-  - Manages dropped item entities on the map.
-- `core/src/main/java/com/main/game/items/DroppedItem.java`
-  - Dropped item physics, pickup delay, suction toward player, and inventory insertion.
-- `core/src/main/java/com/main/game/items/BlockDropFactory.java`
-  - Creates drops from broken blocks.
+### Finite World And Camera
+- The world is finite with `WORLD_WIDTH = 400` and `WORLD_HEIGHT = 128`.
+- Chunks are used as internal storage/rendering structures, without assuming an infinite world.
+- The camera follows the player and is clamped inside world bounds.
+- Camera zoom is closer to the player at `0.5f`.
+- Related files:
+  - `core/src/main/java/com/main/game/utils/Constants.java`
+  - `core/src/main/java/com/main/game/world/World.java`
+  - `core/src/main/java/com/main/game/world/Chunk.java`
+  - `core/src/main/java/com/main/game/ui/GameCameraController.java`
+  - `core/src/main/java/com/main/game/screens/GameScreen.java`
 
-- `core/src/main/java/com/main/game/inventory/Inventory.java`
-  - Inventory model with 36 pickup slots: hotbar + main inventory.
-- `core/src/main/java/com/main/game/inventory/InventoryController.java`
-  - Inventory toggle and selected hotbar slot.
-- `core/src/main/java/com/main/game/inventory/InventoryInteractionHandler.java`
-  - Left/right click behavior for hold, place, swap, stack, and split stack.
-- `core/src/main/java/com/main/game/inventory/InventoryRenderer.java`
-  - Renders hotbar/inventory/held item and stack numbers.
-- `core/src/main/java/com/main/game/inventory/InventoryLayout.java`
-  - Shared slot coordinates for rendering and hit testing.
-- `core/src/main/java/com/main/game/inventory/ItemRegistry.java`
-  - Item/block texture lookup and stack limits.
+### World Generation
+- World generation logic has been moved into the `worldgen` package.
+- Basic biomes are implemented: forest, desert, and snow.
+- Biomes support surface, filler, and deep layers.
+- Basic trees, cactus, ice/snow patches, and simple house/village structures are implemented.
+- Spawn safety helpers exist for players and mobs.
+- Related files:
+  - `core/src/main/java/com/main/game/worldgen/WorldGenerator.java`
+  - `core/src/main/java/com/main/game/worldgen/WorldNoise.java`
+  - `core/src/main/java/com/main/game/worldgen/WorldBlockFactory.java`
+  - `core/src/main/java/com/main/game/worldgen/BiomeType.java`
+  - `core/src/main/java/com/main/game/worldgen/BiomeProfile.java`
+  - `core/src/main/java/com/main/game/worldgen/StructurePlacer.java`
+  - `core/src/main/java/com/main/game/worldgen/SpawnSafety.java`
+  - `core/src/main/java/com/main/game/worldgen/BiomeMobSpawner.java`
+  - `core/src/main/java/com/main/game/world/World.java`
 
-- `core/src/main/java/com/main/game/physics/PhysicsEngine.java`
-  - Gravity + collision/ground detection.
-  - Hotspot to improve: full four-sided AABB, resolved by X/Y axes.
+### Cave System V1
+- Cave V1 is implemented in the `worldgen/cave` package.
+- The cave module includes `CaveGenerator`, `CaveCarver`, and `OreVeinPlacer`.
+- Caves are generated only inside finite world bounds.
+- Cave carving avoids the surface, spawn area, bedrock/deep boundary, and non-stone blocks.
+- Ore veins are placed after carving and only replace remaining `stone` or `deepslate`.
+- Generation remains deterministic from the world seed.
+- Related files:
+  - `core/src/main/java/com/main/game/worldgen/cave/CaveGenerator.java`
+  - `core/src/main/java/com/main/game/worldgen/cave/CaveCarver.java`
+  - `core/src/main/java/com/main/game/worldgen/cave/OreVeinPlacer.java`
+  - `core/src/main/java/com/main/game/world/World.java`
+  - `core/src/main/java/com/main/game/worldgen/WorldBlockFactory.java`
+  - `doc/CAVE_IMPLEMENT_PLAN.md`
 
-- `core/src/main/java/com/main/game/utils/Constants.java`
-  - Game constants: viewport, tile size, gravity, speed, etc.
-- `core/src/main/java/com/main/game/utils/TextureManager.java`
-  - Shared texture manager by key/cache.
-- `core/src/main/java/com/main/game/ui/UISkin.java`
-  - UI style definitions: font, colors, skin binding if Scene2D UI is used.
+### Deepslate And Ores
+- A `deepslate` layer is implemented for deeper underground areas.
+- Bedrock remains at the bottom of the world instead of filling the whole deep area.
+- Normal ores are implemented: coal, iron, gold, diamond, copper, lapis, redstone, and emerald.
+- Deepslate ore variants are implemented for the cave/ore generator.
+- Ore and deepslate texture lookup uses real assets when available and falls back safely when assets are missing.
+- Related files:
+  - `core/src/main/java/com/main/game/worldgen/WorldBlockFactory.java`
+  - `core/src/main/java/com/main/game/worldgen/cave/OreVeinPlacer.java`
+  - `core/src/main/java/com/main/game/world/BlockPalette.java`
+  - `core/src/main/java/com/main/game/inventory/ItemRegistry.java`
+  - `core/src/main/java/com/main/game/blocks/types/OreBlocks.java`
+  - `core/src/main/java/com/main/game/blocks/types/StoneBlocks.java`
+  - `assets/Ores/`
 
-## Quick Run
-- Run desktop game: `./gradlew.bat lwjgl3:run`
-- Build all: `./gradlew.bat build`
-- Run tests, if available: `./gradlew.bat test`
+### Spawn Safety
+- Fixed player spawning inside caves, dirt, stone, or bedrock.
+- The first spawn uses a temporary initial spawn platform.
+- The platform is removed afterward, and future respawns return to normal surface spawning.
+- Player spawn space is cleared so the player does not get stuck in blocks after spawn/respawn.
+- Related files:
+  - `core/src/main/java/com/main/game/world/World.java`
+  - `core/src/main/java/com/main/game/world/SpawnSafetyController.java`
+  - `core/src/main/java/com/main/game/worldgen/SpawnSafety.java`
+  - `core/src/main/java/com/main/game/screens/GameScreen.java`
+  - `core/src/main/java/com/main/game/entities/player/Player.java`
 
-## Current Implemented Systems
-- Screen lifecycle:
-  - `SpriteBatch` and `AssetManager` are created/disposed only in `MainGame`.
-  - Screens transition only through `ScreenRouter.request(ScreenId)`.
-  - Screen switch order: `onExit() -> dispose() -> create new screen -> onEnter()`.
-- World:
-  - Random terrain, around 400x128, with multiple geological layers.
-  - Includes culling to reduce block rendering outside the camera view.
-- Player:
-  - Basic input: move left/right, jump.
-  - Basic states: `IDLE`, `RUN`, `JUMP`, `FALL`, `HURT`, `DEAD`.
-  - Rendering has been split into `entities/player/PlayerRenderer.java`.
-  - Has mining arm animation while breaking blocks.
-  - Can left-click mobs to deal melee damage when not clicking a block.
-- Physics:
-  - Basic gravity + ground detection.
-  - Collision is resolved by X/Y axes for entities and solid blocks.
-- Blocks/Assets:
-  - Has `BlockPalette`, `TextureManager`, and block type classes.
-  - Asset paths were updated after removing `*_1.png` files.
-  - HUD textures have fallback when individual frames are missing.
-- Block breaking:
-  - Has block hover cursor and crack animation from `assets/cursor`.
-  - Only visible blocks can be broken; covered blocks are blocked.
-  - Has an unbreakable block list, for example `bedrock`.
-  - Broken blocks spawn dropped items.
-- Dropped item:
-  - Dropped items have basic physics: gravity, horizontal bounce, ground snap, friction.
-  - Items are pulled toward the player after pickup delay and can enter inventory.
-- Inventory/hotbar:
-  - Hotbar renders items using textures.
-  - Inventory opens with `E`.
-  - Left/right click manages hold, place, swap, stack, and split stack.
-  - Stack numbers use the font asset in `assets/fonts`.
-- Mob:
-  - Mob allegiance is grouped by integer: `0` tamed, `1` passive, `2` hostile.
-  - Tamed mob types include `DOG`, `TAMED_HORSE`.
-  - Passive mob types include `COW`, `PIG`, `SHEEP`, `CHICKEN`, `HORSE`, `WOLF`, `CAT`, `VILLAGER`, fish, and `DOLPHIN`.
-  - Hostile mob types include `ZOMBIE`, `HUSK`, `SKELETON`, `STRAY`, `PILLAGER`, `VINDICATOR`, `EVOKER`, `RAVAGER`.
-  - Hostiles aggro the player within 8 blocks; passives do not attack and panic briefly when hit.
-  - Mobs have per-type width/height in `MobProfile`; spawn safety uses the required mob size.
-  - Includes patrol/chase/attack, panic, line-of-sight checks, simple obstacle jumping, and light knockback when hit.
-  - Jump/fall rendering uses the first walk frame instead of the idle/look frame.
-  - Mobs were refactored into `Mob`, `MobBrain`, `MobProfile`, `MobRenderer`, `MobAssetPack`, movement/sight helpers.
-- Combat:
-  - `PlayerAttackController` handles left-click melee attack against mobs.
-  - Attack prioritizes clicked mob bounds before block breaking; if a mob is hit, block breaking is canceled for that click.
-  - Current player attack is intentionally simple: base damage, falling critical, cooldown, mob invulnerability frames, hurt image, knockback, passive panic, hostile aggro.
-  - Mace, potions, spear/charge attack, special mob interactions, and shield mechanics are intentionally out of scope for now.
-- Worldgen MVP:
-  - `World.generate(seed)` was split into `WorldGenerator.generate(world, seed)`.
-  - Has 3 biomes: `FOREST`, `DESERT`, `SNOW`.
-  - Has simple village/house structures on flat ground.
-  - Has spawn safety helper and initial biome-based mob spawning.
-  - Added biome blocks: `snow`, `ice`, `sandstone`, `cactus`, with generated texture fallback if assets are missing.
-  - Added biome mob `STRAY` with its own profile and skeleton asset fallback.
+### Player And Physics
+- Player movement supports left/right movement, jump, fall, hurt, death, and respawn.
+- Physics supports gravity, ground detection, and X/Y axis collision resolution.
+- Player rendering is separated into its own renderer and includes basic animation.
+- Related files:
+  - `core/src/main/java/com/main/game/entities/player/Player.java`
+  - `core/src/main/java/com/main/game/entities/player/PlayerRenderer.java`
+  - `core/src/main/java/com/main/game/entities/Entity.java`
+  - `core/src/main/java/com/main/game/entities/EntityState.java`
+  - `core/src/main/java/com/main/game/physics/PhysicsEngine.java`
 
-## Missing Systems / Next Priorities
-- Run `./gradlew.bat lwjgl3:run` after every asset change to catch runtime missing textures.
-- Add real projectiles for `SKELETON` instead of direct damage.
-- Add mob item/loot drops.
-- Upgrade mob spawning to a time/chunk-based system instead of initial spawn on game entry.
-- Handle dropped item overflow when closing a full inventory.
-- Standardize asset atlas and naming conventions to avoid crashes after renames/deletions.
+### Mobs And Combat
+- Mobs are grouped as tamed, passive, and hostile.
+- Multiple passive and hostile mob types are implemented with their own size, health, speed, and damage profiles.
+- Mobs support patrol, chase, attack, panic, line-of-sight checks, and knockback when hit.
+- The player can perform left-click melee attacks.
+- Combat includes cooldown, reach checks, falling critical hits, and tool-based damage.
+- Related files:
+  - `core/src/main/java/com/main/game/combat/PlayerAttackController.java`
+  - `core/src/main/java/com/main/game/entities/EntityManager.java`
+  - `core/src/main/java/com/main/game/entities/mob/Mob.java`
+  - `core/src/main/java/com/main/game/entities/mob/MobAllegiance.java`
+  - `core/src/main/java/com/main/game/entities/mob/MobBrain.java`
+  - `core/src/main/java/com/main/game/entities/mob/MobProfile.java`
+  - `core/src/main/java/com/main/game/entities/mob/MobRenderer.java`
+  - `core/src/main/java/com/main/game/entities/mob/MobAssetPack.java`
+  - `core/src/main/java/com/main/game/entities/mob/MobMovementHelper.java`
+  - `core/src/main/java/com/main/game/entities/mob/MobSightHelper.java`
+  - `core/src/main/java/com/main/game/worldgen/BiomeMobSpawner.java`
 
-## Worldgen MVP Progress 2026-05-18
-- Split world generation logic from `World` into the `worldgen` package.
-- Implemented biome noise for forest/desert/snow and stores biome by world column.
-- Added basic decoration: forest/snow trees, desert cactus, snow ice patches.
-- Added village/house structure placer with relatively flat-ground checks.
-- Added `SpawnSafety` for entity/structure spawn validation.
-- Replaced test mob spawning in `GameScreen` with `BiomeMobSpawner.spawnInitialMobs(...)`.
-- Added new blocks `snow`, `ice`, `sandstone`, `cactus` to palette/registry.
-- Verify: `./gradlew.bat classes` passes.
+### Block Breaking And Dropped Items
+- The player can mine blocks with left-click.
+- Block hover cursor and crack overlay are implemented while mining.
+- Fully covered blocks cannot be mined directly.
+- Bedrock is unbreakable.
+- Broken blocks can spawn dropped items.
+- Dropped items have physics, pickup delay, player suction, and inventory pickup.
+- Related files:
+  - `core/src/main/java/com/main/game/interaction/BlockBreaker.java`
+  - `core/src/main/java/com/main/game/interaction/BlockBreakOverlay.java`
+  - `core/src/main/java/com/main/game/interaction/BlockBreakRules.java`
+  - `core/src/main/java/com/main/game/interaction/BlockBreakListener.java`
+  - `core/src/main/java/com/main/game/items/BlockDropFactory.java`
+  - `core/src/main/java/com/main/game/items/DroppedItem.java`
+  - `core/src/main/java/com/main/game/items/DroppedItemManager.java`
+  - `core/src/main/java/com/main/game/items/HarvestEntry.java`
 
-## End-Of-Day Progress 2026-05-18
-- Menu/New Game:
-  - New Game screen now uses a random background from `assets/stage`.
-  - Settings/done buttons were realigned.
-- Block breaking:
-  - Has hover cursor, crack animation, and mining arm animation.
-  - Checks visible blocks and blocks breaking covered blocks.
-  - Blocks unbreakable blocks such as `bedrock`.
-- Dropped item:
-  - Has dropped item entities from broken blocks.
-  - Has physics + pickup/suction into inventory.
-- Inventory:
-  - Has hotbar, inventory panel, stack numbers, left/right click item management.
-  - Slot layout is aligned to `images/gui_invrow/inventory.png`.
-- Player:
-  - Split into the `entities/player` package.
-  - Fixed asset paths after removing `*_1.png` files.
-- Mob:
-  - Added multiple passive/hostile mob types.
-  - Hostiles aggro within 8 blocks; passives only patrol.
-  - Split into `entities/mob` and separated logic/render/profile/assets.
-- Asset/runtime:
-  - Reviewed Java asset paths.
-  - Added fallback for missing HUD texture frames.
-- Verify:
-  - `./gradlew.bat classes` passes after refactoring the `entities` package.
-  - Need to run `./gradlew.bat lwjgl3:run` next to verify game runtime after asset changes.
+### Inventory And Hotbar
+- A 9-slot hotbar and main inventory are implemented.
+- Inventory opens with `E`.
+- Left/right click supports pick, place, swap, stack, and split-stack behavior.
+- Item textures and stack counts render in the hotbar/inventory.
+- Tool stack size is `1`; block stack size defaults to `64`.
+- Starter inventory has been removed; the player no longer receives test items at spawn.
+- Related files:
+  - `core/src/main/java/com/main/game/inventory/Inventory.java`
+  - `core/src/main/java/com/main/game/inventory/InventoryController.java`
+  - `core/src/main/java/com/main/game/inventory/InventoryInteractionHandler.java`
+  - `core/src/main/java/com/main/game/inventory/InventoryLayout.java`
+  - `core/src/main/java/com/main/game/inventory/InventoryRenderer.java`
+  - `core/src/main/java/com/main/game/inventory/ItemRegistry.java`
+  - `core/src/main/java/com/main/game/inventory/ItemStack.java`
+  - `assets/images/gui_invrow/inventory.png`
 
-## Gameplay Progress 2026-05-29
-- Mob grouping:
-  - Added `MobAllegiance` with `TAMED = 0`, `PASSIVE = 1`, `HOSTILE = 2`.
-  - Added expanded mob type list: dog/tamed horse, passive animals/villager/fish/dolphin, and hostile illager/ravager types.
-  - `DOG` represents the tamed form; `WOLF` represents the untamed form.
-  - Existing mob behavior still avoids taming and dog/horse follow AI for now.
-- Mob size:
-  - `MobProfile` now owns per-mob `width` and `height`.
-  - Example sizes: `PIG = 1.5 x 1.0`, `CHICKEN = 0.6 x 0.8`, humanoid hostiles `0.8 x 1.8`, `RAVAGER = 2.0 x 2.2`.
-  - `BiomeMobSpawner` uses the required mob size when calling `SpawnSafety.findSurfaceSpawn(...)`.
-- Mob behavior:
-  - Patrol turn delay was extended with `patrolIdleTimer` so mobs pause longer before moving again.
-  - Fixed passive mobs flipping left/right at patrol boundaries by only turning when moving farther out of range.
-  - Reduced hostile chase speed to avoid overly fast pursuit.
-  - Mob jump/fall render uses the first walk frame instead of the idle/look frame.
-- Camera:
-  - `GameScreen.CAMERA_ZOOM` changed from `0.65f` to `0.5f` so the camera is closer to the player.
-- Combat:
-  - Added `combat/PlayerAttackController.java`.
-  - Left-click on a mob now deals melee damage when the mob is within reach and the cursor is on its bounds.
-  - Mob hit response includes hurt frame, `0.8s` damage invulnerability, light knockback, passive panic, and hostile chase aggro.
-  - Falling player attacks deal a simple critical hit (`2 -> 3` damage).
-  - Combat intentionally excludes mace, potions, spear/charge attacks, special mob interactions, and shields.
-- Verify:
-  - `./gradlew.bat classes` passes after these gameplay changes.
-  - `./gradlew.bat lwjgl3:run` starts without reported runtime errors during short checks, but the command times out because the game loop does not exit by itself.
+### Crafting System V1
+- Player 2x2 crafting is available from the inventory.
+- Crafting table 3x3 crafting opens when pressing `E` while the cursor is over a reachable `crafting_table`.
+- Players can move inventory items into crafting slots and take the output result.
+- Crafting inputs are returned to inventory when closing crafting when inventory space allows it.
+- Implemented recipes include planks, sticks, crafting table, furnace, chest, wood tools, stone tools, copper tools, iron tools, gold tools, and diamond tools.
+- Stone now drops `cobblestone`, and stone tool recipes use `cobblestone`.
+- Related files:
+  - `core/src/main/java/com/main/game/crafting/CraftingController.java`
+  - `core/src/main/java/com/main/game/crafting/CraftingGrid.java`
+  - `core/src/main/java/com/main/game/crafting/CraftingMode.java`
+  - `core/src/main/java/com/main/game/crafting/CraftingRecipe.java`
+  - `core/src/main/java/com/main/game/crafting/CraftingMatch.java`
+  - `core/src/main/java/com/main/game/crafting/RecipeRegistry.java`
+  - `core/src/main/java/com/main/game/utilityblock/craftingtable/CraftingTableInteractionController.java`
+  - `core/src/main/java/com/main/game/inventory/InventoryLayout.java`
+  - `core/src/main/java/com/main/game/inventory/InventoryRenderer.java`
+  - `core/src/main/java/com/main/game/inventory/InventoryInteractionHandler.java`
 
-## Codex Working Rules
-- Do not make large architecture changes unless requested.
-- When implementing a new large feature, automatically split it into new files/classes and a suitable new directory/package. Avoid stuffing large logic into existing integration files.
-- Do not over-engineer anything. Only do exactly what was requested and what is necessary for the feature/fix to work correctly.
-- Prioritize project performance. If code can be shorter, clearer, and still maintainable, write it shorter.
-- When adding a new feature, prefer creating a dedicated class/file under the appropriate module. Integration files like `GameScreen` should only call short APIs (`update/render/dispose`) instead of owning all new logic.
-- Every change must include:
-  - Files changed.
-  - Systems affected.
-  - How to verify in game: input/scene and expected result.
-- Prioritize gameplay blockers first: physics, input, state.
+### Shared Slot UI
+- Slot item rendering is centralized in `ItemSlotRenderer`.
+- Inventory, crafting, furnace, and chest all use the same item icon, stack count, durability bar, and carried-stack rendering path.
+- Left/right slot click behavior is centralized in `ItemSlotInteractionController`.
+- `ItemSlotAccess` lets each GUI keep its own slot mapping and special take slots, such as crafting results and furnace output.
+- Related files:
+  - `core/src/main/java/com/main/game/inventory/ItemSlotRenderer.java`
+  - `core/src/main/java/com/main/game/inventory/ItemSlotInteractionController.java`
+  - `core/src/main/java/com/main/game/inventory/ItemSlotAccess.java`
+  - `core/src/main/java/com/main/game/inventory/InventoryInteractionHandler.java`
+  - `core/src/main/java/com/main/game/utilityblock/furnace/FurnaceInteractionHandler.java`
+  - `core/src/main/java/com/main/game/utilityblock/chest/ChestInteractionHandler.java`
 
-## Code Comment Rules
-- Only comment `why` or trade-offs. Do not restate obvious code behavior.
-- In game loop/physics logic, use short comments to record assumptions.
-- TODO comments must include context:
-  - Work scope.
-  - Completion condition.
-  - Owner, if available.
-- Examples:
-  - `// Why: resolve Y first to avoid corner sticking when falling onto a block`
-  - `// TODO(lhung): add left/right AABB collision before merging physics`
+### Tool System V1
+- `ToolRegistry` is implemented as the central tool metadata API.
+- Tool types are registered: pickaxe, axe, shovel, sword, and hoe.
+- Tool materials are registered: wood, stone, copper, iron, gold, diamond, and netherite.
+- Tool textures load through metadata before falling back to block textures.
+- Axes support two texture variants:
+  - `*_axe_v1` for hotbar/inventory rendering.
+  - `*_axe_v2` for held-in-hand rendering.
+- Related files:
+  - `core/src/main/java/com/main/game/inventory/ToolRegistry.java`
+  - `core/src/main/java/com/main/game/inventory/ItemRegistry.java`
+  - `core/src/main/java/com/main/game/inventory/ItemStack.java`
+  - `core/src/main/java/com/main/game/entities/player/PlayerRenderer.java`
+  - `assets/tools/wood/`
+  - `assets/tools/stone/`
+  - `assets/tools/copper/`
+  - `assets/tools/iron/`
+  - `assets/tools/gold/`
+  - `assets/tools/diamond/`
+  - `assets/tools/netherite/`
 
-## PR/Review Comment Rules
-- Use severity levels: `blocker`, `major`, `minor`, `nit`.
-- Each comment should include:
-  - Observed issue.
-  - Gameplay/bug risk.
-  - Concrete fix suggestion.
-- Prioritize review coverage for: crashes, incorrect collision, incorrect state, resource leaks, screen lifecycle violations.
+### Tool Usage And Durability
+- Pickaxes mine stone, deepslate, sandstone, ores, and deepslate ores faster.
+- Axes chop wood, planks, and leaves faster.
+- Shovels dig dirt, grass, sand, and snow faster.
+- Swords are for combat and do not speed up mining.
+- Hoes are registered but do not have farming behavior yet.
+- Tools have durability and show a durability bar under their icon.
+- Tools lose durability when used and disappear when durability reaches zero.
+- Related files:
+  - `core/src/main/java/com/main/game/inventory/ToolRegistry.java`
+  - `core/src/main/java/com/main/game/inventory/ItemStack.java`
+  - `core/src/main/java/com/main/game/inventory/InventoryRenderer.java`
+  - `core/src/main/java/com/main/game/interaction/BlockBreaker.java`
+  - `core/src/main/java/com/main/game/combat/PlayerAttackController.java`
 
-## Mandatory Rules For Screens And Resources
-- Do not call `setScreen()` directly in gameplay modules.
-- Do not dispose `batch`/`assetManager` inside a `Screen`.
-- If a screen transition is needed, call `game.getScreenRouter().request(...)`.
+### Held Item Rendering
+- The player can hold tools and blocks in hand.
+- Held items follow the player's facing direction.
+- Held items are aligned so tools are gripped by the handle instead of the sprite center.
+- Held items work correctly with jump/fall animation.
+- Mining/placement swing is reused to make item usage visible.
+- Related files:
+  - `core/src/main/java/com/main/game/entities/player/Player.java`
+  - `core/src/main/java/com/main/game/entities/player/PlayerRenderer.java`
+  - `core/src/main/java/com/main/game/inventory/ItemRegistry.java`
+  - `core/src/main/java/com/main/game/inventory/ToolRegistry.java`
+  - `core/src/main/java/com/main/game/screens/GameScreen.java`
 
-## Task Checklist
-1. Restate the task + affected module (`world`, `player`, `physics`, `screen`, `assets`).
-2. Read related files under `core/src/main/java/com/main/game/...`.
-3. Make a small, scoped change.
-4. Run `lwjgl3:run` or the relevant test.
-5. Report results and manual in-game verification steps.
+### Utility Blocks
+- Utility block interaction is grouped under the `utilityblock` package.
+- `UtilityBlockInteractionController` provides shared reachable-hover checks for utility blocks.
+- Crafting table, furnace, and chest each keep their own focused subpackage.
+- `GameScreen` wires utility blocks through short calls for open, update, render, drop, clear, and dispose behavior.
+- Related files:
+  - `core/src/main/java/com/main/game/utilityblock/UtilityBlockInteractionController.java`
+  - `core/src/main/java/com/main/game/utilityblock/craftingtable/CraftingTableInteractionController.java`
+  - `core/src/main/java/com/main/game/utilityblock/furnace/FurnaceInteractionController.java`
+  - `core/src/main/java/com/main/game/utilityblock/chest/ChestInteractionController.java`
+  - `core/src/main/java/com/main/game/screens/GameScreen.java`
+  - `core/src/main/java/com/main/game/ui/GameHudRenderer.java`
 
-## Team Notes
-- Merge into `main` through PR. Avoid direct merge without review.
-- Prioritize blockers older than 24h, especially Physics because it blocks other branches.
+### Ore Drops And Furnace V1
+- Ore drops now distinguish direct resource ores from raw metal ores.
+- Coal, diamond, lapis, redstone, and emerald ores drop their resource item directly.
+- Iron, gold, and copper ores drop `raw_iron`, `raw_gold`, and `raw_copper`.
+- Deepslate ore variants drop the equivalent items as their normal ore variants.
+- Furnace is a placeable utility block crafted from 8 `cobblestone`.
+- Pressing `E` while the cursor is over a reachable furnace opens the furnace GUI.
+- Furnace state is stored per tile with one input slot, one fuel slot, one output slot, burn timer, and cook progress.
+- Fuel supports `coal`, `wood`, `planks`, and `stick`.
+- Smelting supports `raw_iron -> iron_ingot`, `raw_gold -> gold_ingot`, and `raw_copper -> copper_ingot`.
+- Furnace GUI uses provided progress arrow and flame sprites; flame animation was corrected to burn down from the full flame frames.
+- Breaking a furnace drops its stored input, fuel, output, and the furnace block item.
+- Related files:
+  - `core/src/main/java/com/main/game/utilityblock/furnace/FurnaceState.java`
+  - `core/src/main/java/com/main/game/utilityblock/furnace/FurnaceManager.java`
+  - `core/src/main/java/com/main/game/utilityblock/furnace/FurnaceRenderer.java`
+  - `core/src/main/java/com/main/game/utilityblock/furnace/FurnaceLayout.java`
+  - `core/src/main/java/com/main/game/utilityblock/furnace/FurnaceInteractionHandler.java`
+  - `core/src/main/java/com/main/game/utilityblock/furnace/FurnaceInteractionController.java`
+  - `core/src/main/java/com/main/game/utilityblock/furnace/FuelRegistry.java`
+  - `core/src/main/java/com/main/game/utilityblock/furnace/SmeltingRecipeRegistry.java`
+  - `core/src/main/java/com/main/game/items/BlockDropFactory.java`
+  - `assets/util_block/furnace_off.png`
+  - `assets/util_block/furnace_lit.png`
+  - `assets/util_block/gui/furnace.png`
+  - `assets/util_block/process/`
+
+### Chest V1
+- Chest is a single-block utility block with 27 storage slots.
+- Chest uses `chest_closed.png` in-world with no open animation or lid state.
+- Chest is crafted from 8 `planks` in a 3x3 ring recipe.
+- Pressing `E` while the cursor is over a reachable chest opens the chest GUI.
+- Chest contents persist per placed tile while the game screen is alive.
+- Adjacent chests stay separate; no double chest behavior exists.
+- Breaking a chest drops stored contents and then the chest block item.
+- Related files:
+  - `core/src/main/java/com/main/game/utilityblock/chest/ChestState.java`
+  - `core/src/main/java/com/main/game/utilityblock/chest/ChestManager.java`
+  - `core/src/main/java/com/main/game/utilityblock/chest/ChestRenderer.java`
+  - `core/src/main/java/com/main/game/utilityblock/chest/ChestLayout.java`
+  - `core/src/main/java/com/main/game/utilityblock/chest/ChestInteractionHandler.java`
+  - `core/src/main/java/com/main/game/utilityblock/chest/ChestInteractionController.java`
+  - `assets/util_block/chest_closed.png`
+  - `assets/util_block/gui/chest.png`
+
+### Block Metadata Registry
+- Block metadata is centralized in `BlockRegistry` and `BlockDefinition`.
+- Metadata covers block hardness, texture name, palette fallback, solidity, breakability, placeability, drop item, harvest level, and ore flags.
+- `WorldBlockFactory`, `BlockHarvestRules`, `BlockDropFactory`, and `ItemRegistry` read block behavior from the registry instead of maintaining separate if-chains.
+- Registered drops include `stone -> cobblestone`, direct ore resources, and raw metal ore drops.
+- Related files:
+  - `core/src/main/java/com/main/game/blocks/metadata/BlockDefinition.java`
+  - `core/src/main/java/com/main/game/blocks/metadata/BlockRegistry.java`
+  - `core/src/main/java/com/main/game/worldgen/WorldBlockFactory.java`
+  - `core/src/main/java/com/main/game/interaction/BlockHarvestRules.java`
+  - `core/src/main/java/com/main/game/items/BlockDropFactory.java`
+  - `core/src/main/java/com/main/game/inventory/ItemRegistry.java`
+
+### Block Placement V1
+- `BlockPlacementController` is implemented.
+- Placement uses the cursor tile as the source of truth.
+- Placement overlay appears only when the cursor is over a valid empty tile.
+- Right-click places the selected block at the overlay tile.
+- Only normal 1x1 placeable blocks are supported.
+- Tools, bedrock, out-of-reach blocks, player-overlapping blocks, occupied tiles, and floating unsupported blocks cannot be placed.
+- Successful placement creates the block through `WorldBlockFactory`, writes it into the world, decrements the stack, and clears the slot when the stack reaches zero.
+- Related files:
+  - `core/src/main/java/com/main/game/interaction/BlockPlacementController.java`
+  - `core/src/main/java/com/main/game/interaction/BlockBreakOverlay.java`
+  - `core/src/main/java/com/main/game/worldgen/WorldBlockFactory.java`
+  - `core/src/main/java/com/main/game/world/World.java`
+  - `core/src/main/java/com/main/game/inventory/ItemRegistry.java`
+  - `core/src/main/java/com/main/game/inventory/Inventory.java`
+  - `core/src/main/java/com/main/game/screens/GameScreen.java`
+
+### GameScreen Refactor
+- Some responsibilities have been moved out of `GameScreen`.
+- `GameHudRenderer` handles HUD rendering.
+- `GameCameraController` handles camera follow/clamping.
+- `SpawnSafetyController` handles initial spawn and respawn safety.
+- Related files:
+  - `core/src/main/java/com/main/game/screens/GameScreen.java`
+  - `core/src/main/java/com/main/game/ui/GameHudRenderer.java`
+  - `core/src/main/java/com/main/game/ui/GameCameraController.java`
+  - `core/src/main/java/com/main/game/ui/GameOverlayRenderer.java`
+  - `core/src/main/java/com/main/game/world/SpawnSafetyController.java`
+
+### Git And Docs Cleanup
+- A temporary test branch was created to validate the merge before updating `main`.
+- Validated work was merged into `main`.
+- `main` pull/conflict issues were resolved as requested.
+- Unneeded local-only commits were removed as requested.
+- A `doc/` folder was created and documentation/spec files were moved there, except `README.md`.
+- Related files:
+  - `README.md`
+  - `doc/codex.md`
+  - `doc/CAVE_IMPLEMENT_PLAN.md`
+  - `doc/World_Generation_&_Cave_System.md`
+  - `doc/TODO_TEAM.md`
+  - `doc/PLAN_THIS_WEEK.md`
+  - `doc/OUTLINE_CHUC_NANG.md`
+  - `doc/newgame_logic.md`
+
+## Latest Verification
+- `.\gradlew.bat classes` passed.
+- `.\gradlew.bat test` passed.
+- `git diff --check` passed.
+- Manual gameplay verification was reported working for crafting, furnace, chest, block metadata behavior, and shared slot interaction/rendering.

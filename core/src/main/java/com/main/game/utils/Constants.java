@@ -15,7 +15,7 @@ public final class Constants {
 
     // ─── Tile / World ────────────────────────────────────────────
     public static final int   TILE_SIZE             = 32;       // pixel
-    public static final int   WORLD_WIDTH           = 400;      // số tile ngang (team chốt)
+    public static final int   WORLD_WIDTH           = 500;      // số tile ngang (team chốt)
     public static final int   WORLD_HEIGHT          = 128;      // số tile dọc
 
     // ─── Camera / Viewport ───────────────────────────────────────

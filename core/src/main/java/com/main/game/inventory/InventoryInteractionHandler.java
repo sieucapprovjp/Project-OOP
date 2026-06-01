@@ -2,117 +2,130 @@ package com.main.game.inventory;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.main.game.crafting.CraftingController;
 
 public class InventoryInteractionHandler {
 
-    private ItemStack carriedStack;
+    private final ItemSlotInteractionController slotInteraction = new ItemSlotInteractionController();
 
     public void update(Inventory inventory, InventoryRenderer renderer) {
+        update(inventory, renderer, null);
+    }
+
+    public void update(Inventory inventory, InventoryRenderer renderer, CraftingController craftingController) {
         if (inventory == null || renderer == null) {
             return;
         }
 
         float mouseX = Gdx.input.getX();
         float mouseY = Gdx.graphics.getHeight() - Gdx.input.getY();
-        int slot = renderer.findHoveredSlot(mouseX, mouseY);
+        int slot = renderer.findHoveredSlot(mouseX, mouseY, craftingController);
         if (slot < 0) {
             return;
         }
 
         if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
-            onLeftClick(inventory, slot);
+            slotInteraction.onLeftClick(new InventorySlotAccess(inventory, craftingController), slot);
         } else if (Gdx.input.isButtonJustPressed(Input.Buttons.RIGHT)) {
-            onRightClick(inventory, slot);
+            slotInteraction.onRightClick(new InventorySlotAccess(inventory, craftingController), slot);
         }
     }
 
     public void onCloseInventory(Inventory inventory) {
-        if (inventory == null || carriedStack == null || carriedStack.getCount() <= 0) {
-            carriedStack = null;
+        onCloseInventory(inventory, null);
+    }
+
+    public void onCloseInventory(Inventory inventory, CraftingController craftingController) {
+        if (inventory == null) {
+            slotInteraction.returnCarriedStackToInventory(null);
             return;
         }
-        int remaining = inventory.add(carriedStack.getItemId(), carriedStack.getCount());
-        if (remaining <= 0) {
-            carriedStack = null;
-            return;
+        slotInteraction.returnCarriedStackToInventory(inventory);
+        if (craftingController != null) {
+            craftingController.closeCrafting(inventory);
         }
-        carriedStack.setCount(remaining);
     }
 
     public ItemStack getCarriedStack() {
-        return carriedStack;
+        return slotInteraction.getCarriedStack();
     }
 
-    private void onLeftClick(Inventory inventory, int slotIndex) {
-        ItemStack slotStack = inventory.getSlot(slotIndex);
-        if (carriedStack == null) {
-            if (slotStack != null && slotStack.getCount() > 0) {
-                carriedStack = slotStack;
-                inventory.setSlot(slotIndex, null);
+    private static class InventorySlotAccess implements ItemSlotAccess {
+        private final Inventory inventory;
+        private final CraftingController craftingController;
+
+        InventorySlotAccess(Inventory inventory, CraftingController craftingController) {
+            this.inventory = inventory;
+            this.craftingController = craftingController;
+        }
+
+        @Override
+        public boolean isSpecialTakeSlot(int slotIndex) {
+            return InventoryLayout.isCraftResultSlot(slotIndex);
+        }
+
+        @Override
+        public ItemStack takeSpecialSlot(int slotIndex, ItemStack carriedStack, boolean singleItem) {
+            if (craftingController == null) {
+                return carriedStack;
             }
-            return;
+            return craftingController.takeResult(carriedStack);
         }
 
-        if (slotStack == null || slotStack.getCount() <= 0) {
-            inventory.setSlot(slotIndex, carriedStack);
-            carriedStack = null;
-            return;
+        @Override
+        public boolean isWritableSlot(int slotIndex) {
+            if (InventoryLayout.isArmorSlot(slotIndex)) {
+                return canUseArmorSlots();
+            }
+            if (slotIndex >= 0 && slotIndex < inventory.getTotalSize()) {
+                return true;
+            }
+            return craftingController != null
+                && InventoryLayout.isCraftInputSlot(slotIndex, craftingController.getGrid());
         }
 
-        if (!slotStack.getItemId().equals(carriedStack.getItemId())) {
-            inventory.setSlot(slotIndex, carriedStack);
-            carriedStack = slotStack;
-            return;
+        @Override
+        public ItemStack getSlot(int slotIndex) {
+            if (InventoryLayout.isArmorSlot(slotIndex) && canUseArmorSlots()) {
+                return inventory.getArmorSlot(InventoryLayout.toArmorSlot(slotIndex));
+            }
+            if (slotIndex >= 0 && slotIndex < inventory.getTotalSize()) {
+                return inventory.getSlot(slotIndex);
+            }
+            if (craftingController != null && InventoryLayout.isCraftInputSlot(slotIndex, craftingController.getGrid())) {
+                return craftingController.getGrid().getSlot(InventoryLayout.toCraftInputIndex(slotIndex));
+            }
+            return null;
         }
 
-        int maxStack = ItemRegistry.getMaxStack(carriedStack.getItemId());
-        int room = Math.max(0, maxStack - slotStack.getCount());
-        if (room <= 0) {
-            return;
-        }
-        int moved = Math.min(room, carriedStack.getCount());
-        slotStack.add(moved);
-        carriedStack.subtract(moved);
-        if (carriedStack.getCount() <= 0) {
-            carriedStack = null;
-        }
-    }
-
-    private void onRightClick(Inventory inventory, int slotIndex) {
-        ItemStack slotStack = inventory.getSlot(slotIndex);
-        if (carriedStack == null) {
-            if (slotStack == null || slotStack.getCount() <= 0) {
+        @Override
+        public void setSlot(int slotIndex, ItemStack stack) {
+            if (InventoryLayout.isArmorSlot(slotIndex) && canUseArmorSlots()) {
+                inventory.setArmorSlot(InventoryLayout.toArmorSlot(slotIndex), stack);
                 return;
             }
-            int take = (slotStack.getCount() + 1) / 2;
-            carriedStack = new ItemStack(slotStack.getItemId(), take);
-            slotStack.subtract(take);
-            if (slotStack.getCount() <= 0) {
-                inventory.setSlot(slotIndex, null);
+            if (slotIndex >= 0 && slotIndex < inventory.getTotalSize()) {
+                inventory.setSlot(slotIndex, stack);
+                return;
             }
-            return;
+            if (craftingController != null && InventoryLayout.isCraftInputSlot(slotIndex, craftingController.getGrid())) {
+                craftingController.getGrid().setSlot(InventoryLayout.toCraftInputIndex(slotIndex), stack);
+            }
         }
 
-        if (slotStack == null || slotStack.getCount() <= 0) {
-            inventory.setSlot(slotIndex, new ItemStack(carriedStack.getItemId(), 1));
-            carriedStack.subtract(1);
-            if (carriedStack.getCount() <= 0) {
-                carriedStack = null;
+        @Override
+        public boolean canPlaceSlot(int slotIndex, ItemStack stack) {
+            if (!InventoryLayout.isArmorSlot(slotIndex)) {
+                return true;
             }
-            return;
+            if (!canUseArmorSlots()) {
+                return false;
+            }
+            return inventory.getArmorLoadout().canPlace(InventoryLayout.toArmorSlot(slotIndex), stack);
         }
 
-        if (!slotStack.getItemId().equals(carriedStack.getItemId())) {
-            return;
-        }
-        int maxStack = ItemRegistry.getMaxStack(carriedStack.getItemId());
-        if (slotStack.getCount() >= maxStack) {
-            return;
-        }
-        slotStack.add(1);
-        carriedStack.subtract(1);
-        if (carriedStack.getCount() <= 0) {
-            carriedStack = null;
+        private boolean canUseArmorSlots() {
+            return InventoryLayout.shouldShowArmorSlots(craftingController == null ? null : craftingController.getGrid());
         }
     }
 }

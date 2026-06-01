@@ -7,7 +7,14 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.utils.viewport.Viewport;
+import com.main.game.crafting.CraftingController;
 import com.main.game.entities.player.Player;
+import com.main.game.utilityblock.chest.ChestInteractionHandler;
+import com.main.game.utilityblock.chest.ChestRenderer;
+import com.main.game.utilityblock.chest.ChestState;
+import com.main.game.utilityblock.furnace.FurnaceInteractionHandler;
+import com.main.game.utilityblock.furnace.FurnaceRenderer;
+import com.main.game.utilityblock.furnace.FurnaceState;
 import com.main.game.inventory.Inventory;
 import com.main.game.inventory.InventoryController;
 import com.main.game.inventory.InventoryInteractionHandler;
@@ -19,6 +26,7 @@ public class GameHudRenderer {
 
     private final Texture[] healthTextures = new Texture[21];
     private final Texture[] hungerTextures = new Texture[21];
+    private final Texture[] armorTextures = new Texture[21];
     private final Texture hotbarTex;
     private final Texture selectorTex;
     private final Texture xpBgTex;
@@ -34,6 +42,11 @@ public class GameHudRenderer {
             hungerTextures[i] = loadTextureWithFallback(
                 "mvp/ui/hunger/hunger_" + i + ".png",
                 "mvp/ui/hunger/hunger_0.png");
+            if (i > 0) {
+                armorTextures[i] = loadTextureWithFallback(
+                    "mvp/ui/armor/armour" + i + ".png",
+                    "mvp/ui/armor/armour1.png");
+            }
         }
         hotbarTex = new Texture(Gdx.files.internal("mvp/ui/hotbar.png"));
         selectorTex = new Texture(Gdx.files.internal("mvp/ui/selector.png"));
@@ -45,7 +58,12 @@ public class GameHudRenderer {
 
     public void render(SpriteBatch batch, Viewport viewport, Inventory inventory,
                        InventoryController inventoryController, InventoryRenderer inventoryRenderer,
-                       InventoryInteractionHandler inventoryInteractionHandler, Player player) {
+                       InventoryInteractionHandler inventoryInteractionHandler,
+                       CraftingController craftingController, FurnaceRenderer furnaceRenderer,
+                       FurnaceInteractionHandler furnaceInteractionHandler, FurnaceState openFurnaceState,
+                       ChestRenderer chestRenderer, ChestInteractionHandler chestInteractionHandler,
+                       ChestState openChestState,
+                       Player player) {
         batch.setProjectionMatrix(viewport.getCamera().combined);
         batch.begin();
         drawDebugPalette(batch);
@@ -63,8 +81,16 @@ public class GameHudRenderer {
 
         inventoryRenderer.renderHotbar(batch, inventory, inventoryController, hotbarTex, selectorTex, sw, scale);
         if (inventoryController.isInventoryOpen()) {
-            inventoryRenderer.renderInventory(batch, inventory, sw, sh, scale);
-            inventoryRenderer.renderCarriedStack(batch, inventoryInteractionHandler.getCarriedStack());
+            if (openChestState != null) {
+                chestRenderer.renderChest(batch, inventory, openChestState, sw, sh);
+                chestRenderer.renderCarriedStack(batch, chestInteractionHandler.getCarriedStack());
+            } else if (openFurnaceState != null) {
+                furnaceRenderer.renderFurnace(batch, inventory, openFurnaceState, sw, sh);
+                furnaceRenderer.renderCarriedStack(batch, furnaceInteractionHandler.getCarriedStack());
+            } else {
+                inventoryRenderer.renderInventory(batch, inventory, craftingController, sw, sh, scale);
+                inventoryRenderer.renderCarriedStack(batch, inventoryInteractionHandler.getCarriedStack());
+            }
         }
 
         drawExperienceBar(batch, hbX, hbY, hbW, hbH, scale);
@@ -79,6 +105,9 @@ public class GameHudRenderer {
             if (texture != null) texture.dispose();
         }
         for (Texture texture : hungerTextures) {
+            if (texture != null) texture.dispose();
+        }
+        for (Texture texture : armorTextures) {
             if (texture != null) texture.dispose();
         }
         hotbarTex.dispose();
@@ -123,12 +152,25 @@ public class GameHudRenderer {
         float hpH = hpTex.getHeight() * scale;
         float hpY = xpY + xpBgH + (5f * scale);
         batch.draw(hpTex, hbX, hpY, hpW, hpH);
+        drawArmorBar(batch, player, hbX, hpY + hpH + 4f * scale, scale);
 
-        int hunger = 20;
+        int hunger = player == null ? 20 : Math.max(0, Math.min(20, player.getFoodLevel()));
         Texture hungerTex = hungerTextures[hunger];
         float hgW = hungerTex.getWidth() * (scale * 2f);
         float hgH = hungerTex.getHeight() * (scale * 2f);
         batch.draw(hungerTex, hbX + hbW - hgW, hpY, hgW, hgH);
+    }
+
+    private void drawArmorBar(SpriteBatch batch, Player player, float x, float y, float scale) {
+        int armorPoints = player == null ? 0 : player.getArmorDefensePoints();
+        if (armorPoints <= 0) {
+            return;
+        }
+        Texture armorTexture = armorTextures[Math.min(20, armorPoints)];
+        if (armorTexture == null) {
+            return;
+        }
+        batch.draw(armorTexture, x, y, armorTexture.getWidth() * scale, armorTexture.getHeight() * scale);
     }
 
     private void drawDebugText(SpriteBatch batch, Player player, float screenHeight) {

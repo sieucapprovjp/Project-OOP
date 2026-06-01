@@ -9,6 +9,9 @@ final class MobProfile {
     private static final float DEFAULT_ATTACK_RANGE = 1.2f;
     private static final float DEFAULT_ATTACK_COOL = 1.5f;
     private static final float DEFAULT_PATROL_RANGE = 6f;
+    private static final int LIGHT_HOSTILE_DAMAGE = 1;
+    private static final float MELEE_HOSTILE_ATTACK_COOL = 2.2f;
+    private static final float RANGED_HOSTILE_ATTACK_COOL = 3.0f;
 
     final float patrolSpeed;
     final float chaseSpeed;
@@ -63,13 +66,13 @@ final class MobProfile {
                 return passive(2.6f, 8f, 20, 1.6f, 0.8f);
             case HUSK:
                 return new MobProfile(DEFAULT_PATROL_SPEED, DEFAULT_CHASE_SPEED, HOSTILE_AGGRO_RADIUS, 14f,
-                    DEFAULT_ATTACK_RANGE, DEFAULT_ATTACK_COOL, DEFAULT_PATROL_RANGE, 3, 20, MobAllegiance.HOSTILE, 0.8f, 1.8f);
+                    DEFAULT_ATTACK_RANGE, MELEE_HOSTILE_ATTACK_COOL, DEFAULT_PATROL_RANGE, LIGHT_HOSTILE_DAMAGE, 20, MobAllegiance.HOSTILE, 0.8f, 1.8f);
             case SKELETON:
                 return new MobProfile(1.8f, 2.4f, HOSTILE_AGGRO_RADIUS, 18f,
-                    6f, 2.0f, 5f, 3, 20, MobAllegiance.HOSTILE, 0.8f, 1.8f);
+                    5f, RANGED_HOSTILE_ATTACK_COOL, 5f, LIGHT_HOSTILE_DAMAGE, 20, MobAllegiance.HOSTILE, 0.8f, 1.8f);
             case STRAY:
                 return new MobProfile(1.7f, 2.3f, HOSTILE_AGGRO_RADIUS, 18f,
-                    6f, 2.2f, 5f, 3, 22, MobAllegiance.HOSTILE, 0.8f, 1.8f);
+                    5f, RANGED_HOSTILE_ATTACK_COOL, 5f, LIGHT_HOSTILE_DAMAGE, 22, MobAllegiance.HOSTILE, 0.8f, 1.8f);
             case PILLAGER:
                 return new MobProfile(1.9f, 2.4f, HOSTILE_AGGRO_RADIUS, 18f,
                     6f, 2.0f, 5f, 3, 24, MobAllegiance.HOSTILE, 0.8f, 1.8f);
@@ -93,7 +96,7 @@ final class MobProfile {
             case ZOMBIE:
             default:
                 return new MobProfile(DEFAULT_PATROL_SPEED, DEFAULT_CHASE_SPEED, HOSTILE_AGGRO_RADIUS, DEFAULT_DEAGGRO,
-                    DEFAULT_ATTACK_RANGE, DEFAULT_ATTACK_COOL, DEFAULT_PATROL_RANGE, 2, 20, MobAllegiance.HOSTILE, 0.8f, 1.8f);
+                    DEFAULT_ATTACK_RANGE, MELEE_HOSTILE_ATTACK_COOL, DEFAULT_PATROL_RANGE, LIGHT_HOSTILE_DAMAGE, 20, MobAllegiance.HOSTILE, 0.8f, 1.8f);
         }
     }
 

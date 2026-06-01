@@ -5,6 +5,7 @@ dependencies {
   api "com.badlogicgames.gdx:gdx:$gdxVersion"
   implementation "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
   implementation 'org.postgresql:postgresql:42.7.2'
+  testImplementation 'junit:junit:4.13.2'
   if(enableGraalNative == 'true') {
     implementation "io.github.berstanio:gdx-svmhelper-annotations:$graalHelperVersion"
   }

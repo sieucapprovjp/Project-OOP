@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Matrix4;
 import com.main.game.GameState;
+import com.main.game.time.DayNightCycle;
 
 public class GameOverlayRenderer {
 
@@ -32,6 +33,22 @@ public class GameOverlayRenderer {
 
     public void renderDeath(SpriteBatch batch) {
         renderFullScreenTexture(batch, deathTexture);
+    }
+
+    public void renderWorldDarkness(SpriteBatch batch, int globalLight) {
+        if (globalLight <= 0) {
+            return;
+        }
+        float darkness = Math.min(1f, globalLight / (float) DayNightCycle.MAX_GLOBAL_LIGHT);
+        Color overlayColor = new Color(0f, 0f, 0f, darkness * 0.58f);
+
+        uiProjection.setToOrtho2D(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        batch.setProjectionMatrix(uiProjection);
+        batch.begin();
+        batch.setColor(overlayColor);
+        batch.draw(overlayTexture, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        batch.setColor(Color.WHITE);
+        batch.end();
     }
 
     public void renderBrightness(SpriteBatch batch, GameState gameState) {

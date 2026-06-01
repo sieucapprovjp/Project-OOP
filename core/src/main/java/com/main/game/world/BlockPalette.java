@@ -45,14 +45,14 @@ public final class BlockPalette {
     private static void ensureInitialized() {
         if (initialized) return;
         TextureManager tm = TextureManager.getInstance();
-        grass   = tm.getTexture("grass_block");
+        grass   = tm.getTexture("grass");
         dirt    = tm.getTexture("dirt");
         stone   = tm.getTexture("stone");
         bedrock = tm.getTexture("bedrock");
         sand    = tm.getTexture("sand");
-        wood    = tm.getTexture("oak_log");
-        leaves  = tm.getTexture("oak_leaves");
-        planks  = tm.getTexture("oak_planks");
+        wood    = tm.getTexture("wood");
+        leaves  = tm.getTexture("leaves");
+        planks  = tm.getTexture("planks");
         snow = textureOrGenerated(tm, "snow", Color.WHITE);
         ice = textureOrGenerated(tm, "ice", new Color(0.55f, 0.85f, 1f, 1f));
         sandstone = textureOrGenerated(tm, "sandstone", new Color(0.78f, 0.67f, 0.38f, 1f));

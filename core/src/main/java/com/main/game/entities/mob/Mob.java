@@ -64,6 +64,7 @@ public class Mob extends Entity {
     private final MobAssetPack assets = new MobAssetPack();
     private final MobBrain brain = new MobBrain();
     private final MobRenderer renderer = new MobRenderer();
+    private final MobType type;
     private final MobProfile profile;
 
     // ─── Refs ─────────────────────────────────────────────────
@@ -83,6 +84,7 @@ public class Mob extends Entity {
         this.target        = target;
         this.physics       = physics;
         this.world         = world;
+        this.type = type;
         this.profile = profile;
         this.health = profile.maxHealth;
 
@@ -252,6 +254,7 @@ public class Mob extends Entity {
 
     public EntityState getState()   { return state;   }
     public AIState     getAIState() { return aiState;  }
+    public MobType     getType()    { return type;     }
     public int         getHealth()  { return health;   }
     public int         getAllegiance() { return profile.allegiance; }
     public boolean     isTamed()    { return profile.allegiance == MobAllegiance.TAMED; }

@@ -9,18 +9,26 @@ public class InventoryController {
     private boolean inventoryOpen = false;
     private boolean justClosed = false;
 
-    public void update() {
+    public boolean update() {
         justClosed = false;
-        if (Gdx.input.isKeyJustPressed(Input.Keys.E)) {
-            boolean wasOpen = inventoryOpen;
-            inventoryOpen = !inventoryOpen;
-            justClosed = wasOpen && !inventoryOpen;
-        }
+        boolean inventoryKeyPressed = Gdx.input.isKeyJustPressed(Input.Keys.E);
         for (int i = 0; i < Inventory.HOTBAR_SIZE; i++) {
             if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1 + i)) {
                 selectedHotbarSlot = i;
             }
         }
+        return inventoryKeyPressed;
+    }
+
+    public void open() {
+        inventoryOpen = true;
+        justClosed = false;
+    }
+
+    public void close() {
+        boolean wasOpen = inventoryOpen;
+        inventoryOpen = false;
+        justClosed = wasOpen;
     }
 
     public int getSelectedHotbarSlot() {

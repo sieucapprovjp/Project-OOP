@@ -12,13 +12,17 @@ import java.util.Random;
  * Đảm bảo weighted selection deterministic khi sử dùng cùng Random seed.
  *
  * Ví dụ:
- *  - FOREST: [COW(weight=20), PIG(weight=15), CHICKEN(weight=15), ZOMBIE(weight=5)]
+ *  - FOREST: [COW(weight=20), PIG(weight=15), CHICKEN(weight=18), SHEEP(weight=12)]
+ *  - CHERRY: [COW(weight=20), PIG(weight=15), CHICKEN(weight=18), SHEEP(weight=12)]
+ *  - PLAINS: passive by day, passive + hostile by night through BiomeMobSpawner
  *  - DESERT: [HUSK(weight=15), SKELETON(weight=10)]
- *  - SNOW:   [STRAY(weight=12), SHEEP(weight=15)]
+ *  - SNOW:   [STRAY(weight=16), SKELETON(weight=8)]
  */
 public final class BiomeSpawnTable {
 
     private final Map<BiomeType, List<MobEntry>> biomeTables = new EnumMap<>(BiomeType.class);
+    private final Map<BiomeType, List<MobEntry>> passiveTables = new EnumMap<>(BiomeType.class);
+    private final Map<BiomeType, List<MobEntry>> hostileTables = new EnumMap<>(BiomeType.class);
 
     public BiomeSpawnTable() {
         initializeBiomes();
@@ -35,6 +39,28 @@ public final class BiomeSpawnTable {
 
         BiomeType key = (biome != null) ? biome : BiomeType.FOREST;
         List<MobEntry> entries = biomeTables.getOrDefault(key, biomeTables.get(BiomeType.FOREST));
+        return selectFromEntries(entries, random);
+    }
+
+    public Mob.MobType selectPassiveForBiome(BiomeType biome, Random random) {
+        if (random == null) {
+            throw new IllegalArgumentException("random must not be null");
+        }
+        BiomeType key = (biome != null) ? biome : BiomeType.FOREST;
+        List<MobEntry> entries = passiveTables.getOrDefault(key, passiveTables.get(BiomeType.FOREST));
+        return selectFromEntries(entries, random);
+    }
+
+    public Mob.MobType selectHostileForBiome(BiomeType biome, Random random) {
+        if (random == null) {
+            throw new IllegalArgumentException("random must not be null");
+        }
+        BiomeType key = (biome != null) ? biome : BiomeType.DESERT;
+        List<MobEntry> entries = hostileTables.getOrDefault(key, hostileTables.get(BiomeType.DESERT));
+        return selectFromEntries(entries, random);
+    }
+
+    private Mob.MobType selectFromEntries(List<MobEntry> entries, Random random) {
         if (entries == null || entries.isEmpty()) {
             return Mob.MobType.ZOMBIE; // Fallback
         }
@@ -62,26 +88,45 @@ public final class BiomeSpawnTable {
     }
 
     private void initializeBiomes() {
-        // FOREST: nhiều passive, ít hostile
+        // FOREST: chỉ passive để giữ vùng spawn đầu game dễ thở hơn.
         List<MobEntry> forest = new ArrayList<>();
         forest.add(new MobEntry(Mob.MobType.COW, 20));
         forest.add(new MobEntry(Mob.MobType.PIG, 15));
         forest.add(new MobEntry(Mob.MobType.CHICKEN, 18));
         forest.add(new MobEntry(Mob.MobType.SHEEP, 12));
-        forest.add(new MobEntry(Mob.MobType.ZOMBIE, 5));
         biomeTables.put(BiomeType.FOREST, forest);
+        passiveTables.put(BiomeType.FOREST, forest);
+        biomeTables.put(BiomeType.CHERRY, new ArrayList<>(forest));
+        passiveTables.put(BiomeType.CHERRY, new ArrayList<>(forest));
+
+        List<MobEntry> plainsPassive = new ArrayList<>(forest);
+        plainsPassive.add(new MobEntry(Mob.MobType.HORSE, 8));
+        List<MobEntry> plainsHostile = new ArrayList<>();
+        plainsHostile.add(new MobEntry(Mob.MobType.ZOMBIE, 14));
+        plainsHostile.add(new MobEntry(Mob.MobType.SKELETON, 10));
+        biomeTables.put(BiomeType.PLAINS, combined(plainsPassive, plainsHostile));
+        passiveTables.put(BiomeType.PLAINS, plainsPassive);
+        hostileTables.put(BiomeType.PLAINS, plainsHostile);
 
         // DESERT: chỉ hostile
         List<MobEntry> desert = new ArrayList<>();
         desert.add(new MobEntry(Mob.MobType.HUSK, 15));
         desert.add(new MobEntry(Mob.MobType.SKELETON, 10));
         biomeTables.put(BiomeType.DESERT, desert);
+        hostileTables.put(BiomeType.DESERT, desert);
 
-        // SNOW: hostile + ít passive
+        // SNOW: chỉ hostile theo cùng rule với các biome nguy hiểm.
         List<MobEntry> snow = new ArrayList<>();
-        snow.add(new MobEntry(Mob.MobType.STRAY, 12));
-        snow.add(new MobEntry(Mob.MobType.SHEEP, 15));
+        snow.add(new MobEntry(Mob.MobType.STRAY, 16));
+        snow.add(new MobEntry(Mob.MobType.SKELETON, 8));
         biomeTables.put(BiomeType.SNOW, snow);
+        hostileTables.put(BiomeType.SNOW, snow);
+    }
+
+    private List<MobEntry> combined(List<MobEntry> first, List<MobEntry> second) {
+        List<MobEntry> combined = new ArrayList<>(first);
+        combined.addAll(second);
+        return combined;
     }
 
     /**

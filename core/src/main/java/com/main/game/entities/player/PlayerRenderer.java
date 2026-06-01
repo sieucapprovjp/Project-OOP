@@ -6,12 +6,23 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.main.game.entities.EntityState;
+import com.main.game.inventory.ArmorRegistry;
+import com.main.game.inventory.ArmorSlot;
 import com.main.game.inventory.ItemRegistry;
 import com.main.game.inventory.ToolRegistry;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 class PlayerRenderer {
 
     private static final float MINING_ARM_SPEED = 11f;
+    private static final float ARMORED_LEG_WIDTH_SCALE = 1.25f;
+    private static final float ARMORED_LEG_HEIGHT_SCALE = 1.04f;
+    private static final float ARMORED_BOOT_WIDTH_SCALE = 1.25f;
+    private static final float ARMORED_BOOT_HEIGHT_SCALE = 1.08f;
 
     private Texture tBodyL, tBodyR;
     private Texture tArmL, tArmR;
@@ -24,13 +35,15 @@ class PlayerRenderer {
     private TextureRegion regLegL, regLegR;
     private TextureRegion regHeadR, regHeadL;
     private TextureRegion regBootL, regBootR;
+    private final Map<String, TextureRegion> armorRegionCache = new HashMap<>();
+    private final List<Texture> armorTextures = new ArrayList<>();
 
     PlayerRenderer() {
         loadAssets();
     }
 
     void render(SpriteBatch batch, Player player, EntityState state, float stateTime,
-                boolean mining, float miningTime, boolean hurt, String heldItemId) {
+                boolean actionSwinging, float actionSwingTime, boolean hurt, String heldItemId) {
         float armFrontAngle = 0f;
         float armBackAngle = 0f;
         float legFrontAngle = 0f;
@@ -67,8 +80,8 @@ class PlayerRenderer {
             headTilt = 0f;
         }
 
-        if (mining && state != EntityState.HURT && state != EntityState.DEAD) {
-            float swing = Math.abs(((miningTime * MINING_ARM_SPEED) % 2f) - 1f);
+        if (actionSwinging && state != EntityState.HURT && state != EntityState.DEAD) {
+            float swing = Math.abs(((actionSwingTime * MINING_ARM_SPEED) % 2f) - 1f);
             armFrontAngle = 35f + swing * 70f;
             armBackAngle = 5f;
         }
@@ -77,7 +90,7 @@ class PlayerRenderer {
             batch.setColor(1f, 0.5f, 0.5f, 1f);
         }
 
-        TextureRegion head = regHeadR;
+        TextureRegion head = player.isFacingRight() ? regHeadR : regHeadL;
         TextureRegion body = regBodyR;
         TextureRegion armFront = regArmR;
         TextureRegion armBack = regArmL;
@@ -85,6 +98,10 @@ class PlayerRenderer {
         TextureRegion legBack = regLegL;
         TextureRegion bootFront = regBootR;
         TextureRegion bootBack = regBootL;
+        String helmetItemId = player.getEquippedArmorItemId(ArmorSlot.HELMET);
+        String chestplateItemId = player.getEquippedArmorItemId(ArmorSlot.CHESTPLATE);
+        String leggingsItemId = player.getEquippedArmorItemId(ArmorSlot.LEGGINGS);
+        String bootsItemId = player.getEquippedArmorItemId(ArmorSlot.BOOTS);
 
         float px = player.getX();
         float py = player.getY();
@@ -100,6 +117,14 @@ class PlayerRenderer {
         float legH = 0.5f;
         float bootW = 0.22f;
         float bootH = 0.2f;
+        if (leggingsItemId != null) {
+            legW *= ARMORED_LEG_WIDTH_SCALE;
+            legH *= ARMORED_LEG_HEIGHT_SCALE;
+        }
+        if (bootsItemId != null) {
+            bootW *= ARMORED_BOOT_WIDTH_SCALE;
+            bootH *= ARMORED_BOOT_HEIGHT_SCALE;
+        }
 
         float maxLegAngle = Math.max(Math.abs(legFrontAngle), Math.abs(legBackAngle));
         float totalLegH = legH + bootH;
@@ -118,11 +143,20 @@ class PlayerRenderer {
         float legBackRot = legBackAngle * angleSign;
         float headRot = headTilt * angleSign;
 
+        head = firstNonNull(armorRegion(helmetItemId, player.isFacingRight() ? "head_r" : "head_l"), head);
+        body = firstNonNull(armorRegion(chestplateItemId, "chestplate_steve"), body);
+        armFront = firstNonNull(armorRegion(chestplateItemId, "arm"), armFront);
+        armBack = firstNonNull(armorRegion(chestplateItemId, "arm"), armBack);
+        legFront = firstNonNull(armorRegion(leggingsItemId, "leg"), legFront);
+        legBack = firstNonNull(armorRegion(leggingsItemId, "leg"), legBack);
+        bootFront = firstNonNull(armorRegion(bootsItemId, "boot_steve"), bootFront);
+        bootBack = firstNonNull(armorRegion(bootsItemId, "boot_steve"), bootBack);
+
         batch.draw(armBack, cx - armW / 2f, armY - armH, armW / 2f, armH, armW, armH, scaleX, 1f, armBackRot);
         batch.draw(bootBack, cx - bootW / 2f, legY - bootH, bootW / 2f, legH + bootH, bootW, bootH, scaleX, 1f, legBackRot);
         batch.draw(legBack, cx - legW / 2f, legY, legW / 2f, legH, legW, legH, scaleX, 1f, legBackRot);
         batch.draw(body, cx - bodyW / 2f, bodyY, bodyW / 2f, 0f, bodyW, bodyH, scaleX, 1f, 0f);
-        batch.draw(head, cx - headW / 2f, headY, headW / 2f, 0f, headW, headH, scaleX, 1f, headRot);
+        batch.draw(head, cx - headW / 2f, headY, headW / 2f, 0f, headW, headH, 1f, 1f, headRot);
         batch.draw(bootFront, cx - bootW / 2f, legY - bootH, bootW / 2f, legH + bootH, bootW, bootH, scaleX, 1f, legFrontRot);
         batch.draw(legFront, cx - legW / 2f, legY, legW / 2f, legH, legW, legH, scaleX, 1f, legFrontRot);
         batch.draw(armFront, cx - armW / 2f, armY - armH, armW / 2f, armH, armW, armH, scaleX, 1f, armFrontRot);
@@ -142,6 +176,11 @@ class PlayerRenderer {
         tHeadL.dispose();
         tBootL.dispose();
         tBootR.dispose();
+        for (Texture texture : armorTextures) {
+            texture.dispose();
+        }
+        armorTextures.clear();
+        armorRegionCache.clear();
     }
 
     private void loadAssets() {
@@ -170,6 +209,41 @@ class PlayerRenderer {
 
     private boolean isHeldItemRenderable(String heldItemId) {
         return ToolRegistry.isTool(heldItemId) || ItemRegistry.isPlaceableBlock(heldItemId);
+    }
+
+    private TextureRegion armorRegion(String itemId, String partSuffix) {
+        ArmorRegistry.ArmorDefinition armor = ArmorRegistry.get(itemId);
+        if (armor == null || partSuffix == null) {
+            return null;
+        }
+        String material = armor.getMaterial();
+        String directory = "leather".equals(material) ? "stone" : material;
+        String path = "tools/" + directory + "/" + material + "_" + partSuffix + ".png";
+        TextureRegion region = loadArmorRegion(path);
+        if (region == null && "diamond".equals(material) && "arm".equals(partSuffix)) {
+            region = loadArmorRegion("tools/diamond/diamon_arm.png");
+        }
+        return region;
+    }
+
+    private TextureRegion loadArmorRegion(String path) {
+        if (armorRegionCache.containsKey(path)) {
+            return armorRegionCache.get(path);
+        }
+        if (!Gdx.files.internal(path).exists()) {
+            armorRegionCache.put(path, null);
+            return null;
+        }
+        Texture texture = new Texture(Gdx.files.internal(path));
+        texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+        armorTextures.add(texture);
+        TextureRegion region = new TextureRegion(texture);
+        armorRegionCache.put(path, region);
+        return region;
+    }
+
+    private TextureRegion firstNonNull(TextureRegion preferred, TextureRegion fallback) {
+        return preferred == null ? fallback : preferred;
     }
 
     private void drawHeldItem(SpriteBatch batch, Player player, EntityState state, String heldItemId,
