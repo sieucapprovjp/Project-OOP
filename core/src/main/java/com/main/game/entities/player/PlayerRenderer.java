@@ -143,7 +143,7 @@ class PlayerRenderer {
         float legBackRot = legBackAngle * angleSign;
         float headRot = headTilt * angleSign;
 
-        head = firstNonNull(armorRegion(helmetItemId, player.isFacingRight() ? "head_l" : "head_r"), head);
+        head = firstNonNull(armorRegion(helmetItemId, player.isFacingRight() ? "head_r" : "head_l"), head);
         body = firstNonNull(armorRegion(chestplateItemId, "chestplate_steve"), body);
         armFront = firstNonNull(armorRegion(chestplateItemId, "arm"), armFront);
         armBack = firstNonNull(armorRegion(chestplateItemId, "arm"), armBack);
