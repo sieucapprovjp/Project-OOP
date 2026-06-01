@@ -61,4 +61,5 @@ public final class SpawnSafety {
         }
         return -1;
     }
+
 }
